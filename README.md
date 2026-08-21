@@ -13,6 +13,7 @@ https://meme-card-maker.vercel.app
 
 ## 핵심 기능
 
+- **⚾ 야구 모드**: 날짜를 고르면 그날의 KBO 경기 결과를 자동으로 불러오고, 경기를 선택하면 승리팀 상징색 배경과 스코어 문구가 들어간 카드가 자동 생성됨 (문구 스타일 3종: 스코어/헤드라인/요약)
 - PNG·JPEG 이미지 불러오기 + 문구 위치·크기·색 편집, 즉시 미리보기
 - **이미지·문구 자동 생성**: 직접 업로드/입력이 번거로우면 버튼 한 번으로 배경 이미지(절차적 그라디언트+도형)와 문구(카테고리별 큐레이션 문구)를 자동으로 채울 수 있음 — 물론 언제든 직접 입력으로 덮어쓰기 가능
 - 1:1 · 4:5 · 9:16 세 화면비 — 미리보기와 다운로드 파일이 항상 일치
@@ -30,6 +31,8 @@ https://meme-card-maker.vercel.app
 ```
 meme-card-maker/
 ├─ index.html               앱 진입 화면
+├─ api/
+│  └─ kbo-schedule.js        Vercel 서버리스 함수 (KBO 경기결과 프록시)
 ├─ css/style.css             스타일 + Pretendard 폰트
 ├─ assets/
 │  ├─ fonts/                Pretendard Variable (OFL 라이선스)
