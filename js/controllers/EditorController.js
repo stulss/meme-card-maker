@@ -14,6 +14,7 @@ class EditorController {
     this._lastResult = { didClip: false, didShrink: false };
 
     this.view.populateQuickFill(TEXT_CASES);
+    this.view.populatePhraseCategories(PhraseTemplates.categories());
     this._bindEvents();
     this.view.syncFormFromState(this.cardState);
 
@@ -109,6 +110,35 @@ class EditorController {
 
     el.downloadPngBtn.addEventListener('click', () => this.downloadImage('png'));
     el.downloadJpgBtn.addEventListener('click', () => this.downloadImage('jpg'));
+
+    if (el.autoImageBtn) {
+      el.autoImageBtn.addEventListener('click', () => this._onAutoGenerateImage());
+    }
+    if (el.autoPhraseBtn) {
+      el.autoPhraseBtn.addEventListener('click', () => this._onAutoGeneratePhrase());
+    }
+  }
+
+  /**
+   * 이미지를 직접 업로드하지 않아도 되도록, 현재 화면비에 맞는 해상도로
+   * 절차적 배경 이미지를 즉석에서 생성해 cardState.imageDataUrl에 넣는다.
+   * 업로드된 이미지와 동일한 파이프라인(ImageFit → CardRenderer)을 그대로 탄다.
+   */
+  async _onAutoGenerateImage() {
+    const preset = CardRenderer.RATIO_PRESETS[this.cardState.ratio] || CardRenderer.RATIO_PRESETS['1:1'];
+    const dataUrl = AutoImageGenerator.generate(preset.w, preset.h);
+    this.cardState.imageDataUrl = dataUrl;
+    this.imageElCache = await loadImageFromDataUrl(dataUrl);
+    this.scheduleRender();
+  }
+
+  /** 카테고리 선택에 맞춰(또는 전체 중) 문구를 무작위로 골라 채운다. */
+  _onAutoGeneratePhrase() {
+    const category = this.view.el.phraseCategorySelect ? this.view.el.phraseCategorySelect.value : '';
+    const phrase = PhraseTemplates.random(category);
+    this.cardState.text.content = phrase;
+    this.view.el.textContent.value = phrase;
+    this.scheduleRender();
   }
 
   async _onImageSelected(e) {

@@ -21,6 +21,9 @@
     <div class="field">
       <label for="image-input">이미지 불러오기 (PNG · JPEG)</label>
       <input type="file" id="image-input" accept="image/png,image/jpeg" />
+      <button type="button" class="secondary-btn" id="auto-image-btn" style="margin-top:0.4rem;width:100%;">
+        🎨 이미지 자동 생성 (직접 업로드 없이 배경 만들기)
+      </button>
     </div>
 
     <div class="field">
@@ -48,6 +51,12 @@
     <div class="field">
       <label for="text-content">문구</label>
       <textarea id="text-content" placeholder="문구를 입력하세요"></textarea>
+      <div class="field-row" style="margin-top:0.4rem;">
+        <select id="phrase-category-select" style="flex:1;padding:0.4rem 0.5rem;background:#10131b;border:1px solid var(--panel-border);border-radius:6px;color:var(--text);">
+          <option value="">전체 카테고리</option>
+        </select>
+        <button type="button" class="secondary-btn" id="auto-phrase-btn" style="flex:1;">✨ 문구 자동 생성</button>
+      </div>
     </div>
 
     <div class="field-row">
@@ -154,10 +163,12 @@
 <script src="js/models/TemplateModel.js"></script>
 <script src="js/models/TemplateStore.js"></script>
 <script src="js/models/FixtureData.js"></script>
+<script src="js/models/PhraseTemplates.js"></script>
 
 <script src="js/render/ImageFit.js"></script>
 <script src="js/render/TextLayout.js"></script>
 <script src="js/render/CardRenderer.js"></script>
+<script src="js/render/AutoImageGenerator.js"></script>
 
 <script src="js/views/domHelpers.js"></script>
 <script src="js/views/EditorView.js"></script>

@@ -8,6 +8,7 @@ class EditorView {
     this.root = root;
     this.el = {
       imageInput: qs('#image-input', root),
+      autoImageBtn: qs('#auto-image-btn', root),
       fitMode: qs('#fit-mode', root),
       ratioButtons: qsa('.ratio-btn', root),
       textContent: qs('#text-content', root),
@@ -20,6 +21,8 @@ class EditorView {
       bgColor: qs('#bg-color', root),
       alignButtons: qsa('.align-btn', root),
       quickFillSelect: qs('#quick-fill-select', root),
+      phraseCategorySelect: qs('#phrase-category-select', root),
+      autoPhraseBtn: qs('#auto-phrase-btn', root),
       shrinkHint: qs('#shrink-hint', root),
       canvas: qs('#preview-canvas', root),
       canvasWrap: qs('#preview-canvas-wrap', root),
@@ -75,6 +78,18 @@ class EditorView {
       const opt = document.createElement('option');
       opt.value = tc.id;
       opt.textContent = tc.label;
+      select.appendChild(opt);
+    });
+  }
+
+  populatePhraseCategories(categories) {
+    if (!this.el.phraseCategorySelect) return;
+    const select = this.el.phraseCategorySelect;
+    select.innerHTML = '<option value="">전체 카테고리</option>';
+    categories.forEach((cat) => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
       select.appendChild(opt);
     });
   }
