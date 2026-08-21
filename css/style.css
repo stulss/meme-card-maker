@@ -1,0 +1,313 @@
+/* style.css - meme-card-maker
+   레이아웃: 편집 패널 / 미리보기 패널 / 템플릿 패널 / 가져오기·내보내기 패널
+   폰트: Pretendard Variable (assets/fonts, OFL 라이선스) */
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/PretendardVariable.woff2') format('woff2-variations');
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --bg: #0f1117;
+  --panel-bg: #171a23;
+  --panel-border: #2a2f3d;
+  --text: #e8eaf0;
+  --text-dim: #9aa1b4;
+  --accent: #6ea8fe;
+  --accent-text: #0f1117;
+  --danger: #ff6b6b;
+  --success: #6ee7b7;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard', 'Malgun Gothic', -apple-system, sans-serif;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.5rem;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.app-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.app-header p {
+  color: var(--text-dim);
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem 1.5rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (max-width: 900px) {
+  .app-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.panel h2 {
+  font-size: 1.05rem;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.field {
+  margin-bottom: 0.75rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 0.25rem;
+}
+
+.field input[type='text'],
+.field input[type='file'],
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  background: #10131b;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 4.5em;
+}
+
+.field-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.field-row .field {
+  flex: 1;
+}
+
+.btn-group {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.btn-group button {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  background: #10131b;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.85rem;
+  min-height: 44px;
+}
+
+.btn-group button.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.primary-btn {
+  padding: 0.55rem 1rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  min-height: 44px;
+}
+
+.secondary-btn {
+  padding: 0.55rem 1rem;
+  background: #10131b;
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  min-height: 44px;
+}
+
+.secondary-btn.danger,
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* 미리보기 캔버스: CSS는 화면 표시 크기만 조정, canvas 내부 해상도는
+   CardRenderer가 RATIO_PRESETS로 별도 관리 (screen == file 보장) */
+#preview-canvas-wrap {
+  --ratio-w: 1080;
+  --ratio-h: 1080;
+  aspect-ratio: var(--ratio-w) / var(--ratio-h);
+  max-width: 360px;
+  margin: 0 auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000;
+}
+
+#preview-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.shrink-hint {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 0.4rem;
+}
+
+.download-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  justify-content: center;
+}
+
+/* 템플릿 목록 */
+#template-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.template-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.template-item.active {
+  border-color: var(--accent);
+}
+
+.template-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #10131b;
+}
+.template-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.template-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.template-info strong {
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.template-meta {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.template-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+.template-actions button {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.8rem;
+  background: #10131b;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 6px;
+  min-height: 36px;
+}
+
+.template-empty {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 0.5rem;
+}
+
+.status-message {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: rgba(110, 231, 183, 0.12);
+  color: var(--success);
+}
+.status-message.error {
+  background: rgba(255, 107, 107, 0.12);
+  color: var(--danger);
+}
+
+.privacy-note {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px dashed var(--panel-border);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.import-export-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

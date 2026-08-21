@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "exportedAt": "2026-08-01T00:00:00.000Z",
+  "templates": [
+    {
+      "id": "tpl-broken-1",
+      "name": "필수 항목이 빠진 예시",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "updatedAt": "2026-08-01T00:00:00.000Z"
+    }
+  ]
+}

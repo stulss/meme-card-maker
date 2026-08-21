@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>이미지+문구 카드 메이커</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<header class="app-header">
+  <h1>이미지+문구 카드 메이커</h1>
+  <p>이미지와 문구를 조합해 밈·카드뉴스·SNS 게시용 이미지를 만들고 파일로 내려받습니다.</p>
+</header>
+
+<main class="app-grid">
+
+  <!-- 편집 패널 (카드 1) -->
+  <section class="panel" aria-labelledby="editor-heading">
+    <h2 id="editor-heading">편집</h2>
+
+    <div class="field">
+      <label for="image-input">이미지 불러오기 (PNG · JPEG)</label>
+      <input type="file" id="image-input" accept="image/png,image/jpeg" />
+    </div>
+
+    <div class="field">
+      <label for="fit-mode">이미지 맞춤 방식</label>
+      <select id="fit-mode">
+        <option value="cover">채우기 (cover)</option>
+        <option value="contain">전체 보기 (contain)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>화면비 (카드 2: 미리보기와 파일이 일치)</label>
+      <div class="btn-group" role="group" aria-label="화면비 선택">
+        <button type="button" class="ratio-btn" data-ratio="1:1" aria-pressed="true">1:1</button>
+        <button type="button" class="ratio-btn" data-ratio="4:5" aria-pressed="false">4:5</button>
+        <button type="button" class="ratio-btn" data-ratio="9:16" aria-pressed="false">9:16</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="quick-fill-select">검사 문구 빠른 입력 (카드 3 극단 입력 12종)</label>
+      <select id="quick-fill-select"></select>
+    </div>
+
+    <div class="field">
+      <label for="text-content">문구</label>
+      <textarea id="text-content" placeholder="문구를 입력하세요"></textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="pos-x">위치 X (%)</label>
+        <input type="range" id="pos-x" min="0" max="100" value="8" />
+      </div>
+      <div class="field">
+        <label for="pos-y">위치 Y (%)</label>
+        <input type="range" id="pos-y" min="0" max="100" value="62" />
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="box-w">상자 너비 (%)</label>
+        <input type="range" id="box-w" min="10" max="100" value="84" />
+      </div>
+      <div class="field">
+        <label for="box-h">상자 높이 (%)</label>
+        <input type="range" id="box-h" min="5" max="100" value="30" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="max-font-size">최대 글자 크기 (%)</label>
+      <input type="range" id="max-font-size" min="2" max="30" value="12" />
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="text-color">문구 색상</label>
+        <input type="color" id="text-color" value="#ffffff" />
+      </div>
+      <div class="field">
+        <label for="bg-color">배경 색상</label>
+        <input type="color" id="bg-color" value="#1c1c28" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>정렬</label>
+      <div class="btn-group" role="group" aria-label="문구 정렬">
+        <button type="button" class="align-btn" data-align="left" aria-pressed="false">왼쪽</button>
+        <button type="button" class="align-btn" data-align="center" aria-pressed="true">가운데</button>
+        <button type="button" class="align-btn" data-align="right" aria-pressed="false">오른쪽</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 미리보기 패널 (카드 1, 2) -->
+  <section class="panel" aria-labelledby="preview-heading">
+    <h2 id="preview-heading">미리보기</h2>
+    <div id="preview-canvas-wrap">
+      <canvas id="preview-canvas" width="1080" height="1080"></canvas>
+    </div>
+    <p class="shrink-hint" id="shrink-hint" hidden>자동 축소됨 - 문구가 상자에 맞게 조정되었습니다.</p>
+    <div class="download-actions">
+      <button type="button" class="primary-btn" id="download-png-btn">PNG 다운로드</button>
+      <button type="button" class="secondary-btn" id="download-jpg-btn">JPG 다운로드</button>
+    </div>
+  </section>
+
+  <!-- 템플릿 패널 (카드 4) -->
+  <section class="panel" aria-labelledby="template-heading">
+    <h2 id="template-heading">템플릿</h2>
+    <div class="field">
+      <label for="template-name-input">템플릿 이름</label>
+      <input type="text" id="template-name-input" placeholder="예: 인스타 공지 카드" />
+    </div>
+    <div class="btn-group">
+      <button type="button" class="primary-btn" id="template-save-new-btn">새 템플릿으로 저장</button>
+      <button type="button" class="secondary-btn" id="template-update-current-btn" disabled>현재 템플릿 업데이트</button>
+    </div>
+    <p class="status-message" id="template-message" hidden></p>
+    <ul id="template-list"></ul>
+  </section>
+
+  <!-- 가져오기/내보내기 패널 (카드 5) -->
+  <section class="panel" aria-labelledby="import-export-heading">
+    <h2 id="import-export-heading">가져오기 / 내보내기</h2>
+    <div class="import-export-actions">
+      <button type="button" class="secondary-btn" id="export-json-btn">JSON으로 내보내기</button>
+      <label class="secondary-btn" for="import-json-input" style="display:inline-flex;align-items:center;">
+        JSON 가져오기
+        <input type="file" id="import-json-input" accept="application/json" style="display:none;" />
+      </label>
+    </div>
+    <p class="status-message" id="import-export-message" hidden></p>
+    <p class="privacy-note">
+      이 페이지에서 만든 템플릿·이미지는 이 브라우저(localStorage)에만 저장되며 서버로 전송되지 않습니다.
+      업로드하는 이미지에 개인정보나 위치 정보가 없는지 직접 확인해 주세요.
+    </p>
+  </section>
+
+</main>
+
+<!-- script 로드 순서: models -> render -> views -> controllers -> main -->
+<script src="js/utils/idGenerator.js"></script>
+<script src="js/utils/fileHelpers.js"></script>
+<script src="js/utils/validators.js"></script>
+
+<script src="js/models/CardStateModel.js"></script>
+<script src="js/models/TemplateModel.js"></script>
+<script src="js/models/TemplateStore.js"></script>
+<script src="js/models/FixtureData.js"></script>
+
+<script src="js/render/ImageFit.js"></script>
+<script src="js/render/TextLayout.js"></script>
+<script src="js/render/CardRenderer.js"></script>
+
+<script src="js/views/domHelpers.js"></script>
+<script src="js/views/EditorView.js"></script>
+<script src="js/views/TemplateListView.js"></script>
+<script src="js/views/ImportExportView.js"></script>
+
+<script src="js/controllers/EditorController.js"></script>
+<script src="js/controllers/TemplateController.js"></script>
+<script src="js/controllers/ImportExportController.js"></script>
+<script src="js/controllers/AppController.js"></script>
+
+<script src="js/main.js"></script>
+</body>
+</html>
