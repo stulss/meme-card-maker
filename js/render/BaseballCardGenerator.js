@@ -92,10 +92,12 @@ const BaseballCardGenerator = {
       this._loadLogo(game.awayTeam),
       this._loadLogo(game.homeTeam),
     ]);
-    const markBox = Math.min(w * 0.42, h * 0.34);
-    const markAlpha = bgImage ? 0.14 : 0.2; // AI 배경 위에서는 더 은은하게
-    if (awayLogo) this._drawLogo(ctx, awayLogo, w * 0.25, h * 0.47, markBox, markAlpha);
-    if (homeLogo) this._drawLogo(ctx, homeLogo, w * 0.75, h * 0.47, markBox, markAlpha);
+    // 점수(h*0.52)를 중심으로 배치하되, 위쪽 '원정/홈' 글씨와 겹치지 않도록
+    // 살짝 아래로 내린다.
+    const markBox = Math.min(w * 0.4, h * 0.32);
+    const markAlpha = bgImage ? 0.13 : 0.18; // AI 배경 위에서는 더 은은하게
+    if (awayLogo) this._drawLogo(ctx, awayLogo, w * 0.25, h * 0.53, markBox, markAlpha);
+    if (homeLogo) this._drawLogo(ctx, homeLogo, w * 0.75, h * 0.53, markBox, markAlpha);
 
     // 4) 상단: 날짜 · 구장
     const headerSize = Math.round(h * 0.038);
