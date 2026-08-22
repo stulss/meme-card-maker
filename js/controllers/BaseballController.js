@@ -133,20 +133,25 @@ class BaseballController {
     const cardState = this.editorController.cardState;
     const preset = CardRenderer.RATIO_PRESETS[cardState.ratio] || CardRenderer.RATIO_PRESETS['1:1'];
 
-    const style = this.el.phraseStyle ? this.el.phraseStyle.value : 'score';
-    const dataUrl = BaseballCardGenerator.generateBackground(game, preset.w, preset.h);
-    const phrase = BaseballCardGenerator.generatePhrase(game, style);
+    const style = this.el.phraseStyle ? this.el.phraseStyle.value : 'none';
+
+    // 경기 결과 자체를 스코어보드 그래픽으로 그린 이미지 (팀명·점수·날짜·승패 포함)
+    const dataUrl = await BaseballCardGenerator.generateScoreboard(game, preset.w, preset.h);
 
     cardState.imageDataUrl = dataUrl;
     cardState.imageFitMode = 'cover';
-    cardState.text.content = phrase;
+
+    // 스코어보드 이미지에 이미 정보가 다 들어있으므로 문구는 기본적으로 비운다.
+    // 사용자가 코멘트를 덧붙이고 싶으면 문구 스타일을 고르거나 직접 입력하면 된다.
+    cardState.text.content = style === 'none' ? '' : BaseballCardGenerator.generatePhrase(game, style);
     cardState.text.color = '#ffffff';
     cardState.text.align = 'center';
-    // 문구를 하단 중앙에 배치 (배경 하단이 어둡게 처리되어 가독성이 좋음)
+    // 코멘트는 하단 여백에 배치 (스코어보드 본문과 겹치지 않도록)
     cardState.text.xRatio = 0.06;
-    cardState.text.yRatio = 0.6;
+    cardState.text.yRatio = 0.87;
     cardState.text.wRatio = 0.88;
-    cardState.text.hRatio = 0.32;
+    cardState.text.hRatio = 0.1;
+    cardState.text.maxFontSizeRatio = 0.04;
 
     this.editorController.imageElCache = await loadImageFromDataUrl(dataUrl);
     this.editorController.view.syncFormFromState(cardState);

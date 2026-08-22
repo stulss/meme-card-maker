@@ -8,9 +8,167 @@
  */
 const BaseballCardGenerator = {
   /**
-   * 경기 결과에 맞는 배경 이미지를 생성한다.
-   * - 정상 경기: 승리팀 상징색 그라디언트 + 대각선 스트라이프
-   * - 무승부/취소: 중립 회색 그라디언트
+   * 경기 결과 자체를 스코어보드 그래픽으로 그린 완성 이미지를 만든다.
+   * 배경색만 칠하는 generateBackground와 달리, 팀명·점수·날짜·구장·승패까지
+   * 이미지 안에 직접 렌더링하므로 이 이미지 하나로 카드가 완성된다.
+   *
+   * 좌우를 각 팀 상징색으로 나누고, 패배팀 쪽은 어둡게 처리해 결과가
+   * 한눈에 보이게 한다. 구단 로고·엠블럼은 저작권 때문에 쓰지 않는다.
+   *
+   * @returns {Promise<string>} PNG dataURL
+   */
+  async generateScoreboard(game, w, h) {
+    await CardRenderer.ensureFontsReady();
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const font = 'Pretendard, "Malgun Gothic", sans-serif';
+
+    const awayTeam = KboTeams.get(game.awayTeam);
+    const homeTeam = KboTeams.get(game.homeTeam);
+    const winner = KboTeams.winnerOf(game);
+    const awayWon = winner === game.awayTeam;
+    const homeWon = winner === game.homeTeam;
+
+    // 1) 좌우 팀 색상 분할 (패배팀은 어둡게)
+    const half = w / 2;
+    ctx.fillStyle = game.played && homeWon ? this._darken(awayTeam.primary, 0.55) : awayTeam.primary;
+    ctx.fillRect(0, 0, half, h);
+    ctx.fillStyle = game.played && awayWon ? this._darken(homeTeam.primary, 0.55) : homeTeam.primary;
+    ctx.fillRect(half, 0, w - half, h);
+
+    // 미개최 경기는 전체를 어둡게 (결과 없음을 시각적으로 표현)
+    if (!game.played) {
+      ctx.fillStyle = 'rgba(15,17,23,0.72)';
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // 2) 상하 그라디언트로 깊이감 + 텍스트 가독성 확보
+    const shade = ctx.createLinearGradient(0, 0, 0, h);
+    shade.addColorStop(0, 'rgba(0,0,0,0.45)');
+    shade.addColorStop(0.5, 'rgba(0,0,0,0.12)');
+    shade.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, 0, w, h);
+
+    // 3) 가운데 세로 구분선
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = Math.max(2, w * 0.004);
+    ctx.beginPath();
+    ctx.moveTo(half, h * 0.2);
+    ctx.lineTo(half, h * 0.8);
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // 4) 상단: 날짜 · 구장
+    const headerSize = Math.round(h * 0.038);
+    ctx.font = `${headerSize}px ${font}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    const headerParts = [game.dateLabel, game.stadium].filter(Boolean);
+    ctx.fillText(headerParts.join('  ·  '), w / 2, h * 0.13);
+
+    // 상단 구분선
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = Math.max(1, w * 0.002);
+    ctx.beginPath();
+    ctx.moveTo(w * 0.25, h * 0.175);
+    ctx.lineTo(w * 0.75, h * 0.175);
+    ctx.stroke();
+
+    // 5) 팀명 (좌: 원정 / 우: 홈)
+    const teamSize = Math.round(h * 0.062);
+    ctx.font = `700 ${teamSize}px ${font}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(game.awayTeam, w * 0.25, h * 0.33);
+    ctx.fillText(game.homeTeam, w * 0.75, h * 0.33);
+
+    // 원정/홈 표시
+    const tagSize = Math.round(h * 0.026);
+    ctx.font = `${tagSize}px ${font}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillText('원정', w * 0.25, h * 0.39);
+    ctx.fillText('홈', w * 0.75, h * 0.39);
+
+    // 6) 점수 (또는 미개최 표시)
+    if (game.played) {
+      const scoreSize = Math.round(h * 0.17);
+      ctx.font = `800 ${scoreSize}px ${font}`;
+
+      ctx.fillStyle = awayWon ? '#ffffff' : 'rgba(255,255,255,0.62)';
+      ctx.fillText(String(game.awayScore), w * 0.25, h * 0.52);
+
+      ctx.fillStyle = homeWon ? '#ffffff' : 'rgba(255,255,255,0.62)';
+      ctx.fillText(String(game.homeScore), w * 0.75, h * 0.52);
+
+      // 가운데 콜론
+      ctx.font = `600 ${Math.round(h * 0.07)}px ${font}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillText(':', w / 2, h * 0.52);
+
+      // 승리팀 쪽에 WIN 배지
+      if (winner) {
+        const badgeX = awayWon ? w * 0.25 : w * 0.75;
+        const badgeW = w * 0.14;
+        const badgeH = h * 0.045;
+        ctx.fillStyle = '#ffffff';
+        this._roundRect(ctx, badgeX - badgeW / 2, h * 0.62 - badgeH / 2, badgeW, badgeH, badgeH / 2);
+        ctx.fill();
+        ctx.fillStyle = awayWon ? awayTeam.primary : homeTeam.primary;
+        ctx.font = `800 ${Math.round(h * 0.028)}px ${font}`;
+        ctx.fillText('WIN', badgeX, h * 0.62);
+      }
+    } else {
+      ctx.font = `700 ${Math.round(h * 0.075)}px ${font}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillText('VS', w / 2, h * 0.52);
+    }
+
+    // 7) 하단: 결과 문구
+    const resultSize = Math.round(h * 0.05);
+    ctx.font = `700 ${resultSize}px ${font}`;
+    ctx.fillStyle = '#ffffff';
+    let resultText;
+    if (!game.played) {
+      resultText = game.note || '경기 취소';
+    } else if (winner) {
+      resultText = `${KboTeams.get(winner).name} 승리`;
+    } else {
+      resultText = '무승부';
+    }
+    ctx.fillText(resultText, w / 2, h * 0.78);
+
+    // 경기 시간 (개최된 경기만)
+    if (game.time) {
+      ctx.font = `${Math.round(h * 0.026)}px ${font}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText(game.time, w / 2, h * 0.845);
+    }
+
+    return canvas.toDataURL('image/png');
+  },
+
+  /** 둥근 사각형 경로 (배지용) */
+  _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  },
+
+  /**
+   * (구버전) 경기 결과에 맞는 단순 배경 이미지를 생성한다.
+   * 지금은 generateScoreboard를 쓰지만, 배경만 필요할 때를 위해 남겨둔다.
    * @returns {string} PNG dataURL
    */
   generateBackground(game, w, h) {
