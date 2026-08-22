@@ -136,7 +136,7 @@ class BaseballController {
       return `An empty baseball stadium ${night}, quiet and moody atmosphere, rain-soaked or overcast sky, cinematic wide shot.`;
     }
     return `A dramatic baseball stadium ${night}, packed crowd in the stands, cinematic wide shot, vibrant sports photography atmosphere.`;
-  },
+  }
 
   /** 선택한 경기로 배경 이미지 + 문구를 자동 생성해 편집기에 반영한다. */
   async applyGame(index) {
