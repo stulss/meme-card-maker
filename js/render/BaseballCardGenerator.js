@@ -85,34 +85,44 @@ const BaseballCardGenerator = {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    // 3-1) 구단 엠블럼 (있으면 팀명 위에 배치)
+    // AI에게 로고를 그리게 하면 반드시 뭉개지므로, 공식 엠블럼 이미지를 직접 합성한다.
+    const [awayLogo, homeLogo] = await Promise.all([
+      this._loadLogo(game.awayTeam),
+      this._loadLogo(game.homeTeam),
+    ]);
+    const logoBox = h * 0.1;
+    if (awayLogo) this._drawLogo(ctx, awayLogo, w * 0.25, h * 0.235, logoBox);
+    if (homeLogo) this._drawLogo(ctx, homeLogo, w * 0.75, h * 0.235, logoBox);
+
     // 4) 상단: 날짜 · 구장
-    const headerSize = Math.round(h * 0.038);
+    const headerSize = Math.round(h * 0.036);
     ctx.font = `${headerSize}px ${font}`;
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
     const headerParts = [game.dateLabel, game.stadium].filter(Boolean);
-    ctx.fillText(headerParts.join('  ·  '), w / 2, h * 0.13);
+    ctx.fillText(headerParts.join('  ·  '), w / 2, h * 0.1);
 
     // 상단 구분선
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = Math.max(1, w * 0.002);
     ctx.beginPath();
-    ctx.moveTo(w * 0.25, h * 0.175);
-    ctx.lineTo(w * 0.75, h * 0.175);
+    ctx.moveTo(w * 0.25, h * 0.14);
+    ctx.lineTo(w * 0.75, h * 0.14);
     ctx.stroke();
 
-    // 5) 팀명 (좌: 원정 / 우: 홈)
-    const teamSize = Math.round(h * 0.062);
+    // 5) 팀명 (좌: 원정 / 우: 홈) — 로고 아래에 배치
+    const teamSize = Math.round(h * 0.058);
     ctx.font = `700 ${teamSize}px ${font}`;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(game.awayTeam, w * 0.25, h * 0.33);
-    ctx.fillText(game.homeTeam, w * 0.75, h * 0.33);
+    ctx.fillText(game.awayTeam, w * 0.25, h * 0.325);
+    ctx.fillText(game.homeTeam, w * 0.75, h * 0.325);
 
     // 원정/홈 표시
-    const tagSize = Math.round(h * 0.026);
+    const tagSize = Math.round(h * 0.025);
     ctx.font = `${tagSize}px ${font}`;
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.fillText('원정', w * 0.25, h * 0.39);
-    ctx.fillText('홈', w * 0.75, h * 0.39);
+    ctx.fillText('원정', w * 0.25, h * 0.375);
+    ctx.fillText('홈', w * 0.75, h * 0.375);
 
     // 6) 점수 (또는 미개최 표시)
     if (game.played) {
@@ -170,6 +180,43 @@ const BaseballCardGenerator = {
     }
 
     return canvas.toDataURL('image/png');
+  },
+
+  /** 로고 이미지 캐시 (같은 팀을 반복 로드하지 않도록) */
+  _logoCache: {},
+
+  /**
+   * 구단 엠블럼을 로드한다. 파일이 없거나 실패하면 null을 반환해
+   * 로고 없이도 카드가 정상 생성되도록 한다.
+   */
+  _loadLogo(teamCode) {
+    const path = KboTeams.logoPath(teamCode);
+    if (!path) return Promise.resolve(null);
+    if (this._logoCache[path] !== undefined) return Promise.resolve(this._logoCache[path]);
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        this._logoCache[path] = img;
+        resolve(img);
+      };
+      img.onerror = () => {
+        this._logoCache[path] = null;
+        resolve(null);
+      };
+      img.src = path;
+    });
+  },
+
+  /** 로고를 (cx, cy) 중심에 box 크기 안에 비율 유지하며 그린다 */
+  _drawLogo(ctx, img, cx, cy, box) {
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return;
+    const scale = Math.min(box / iw, box / ih);
+    const dw = iw * scale;
+    const dh = ih * scale;
+    ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
   },
 
   /** 둥근 사각형 경로 (배지용) */

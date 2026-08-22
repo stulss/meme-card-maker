@@ -79,10 +79,34 @@ const KBO_TEAMS = {
   },
 };
 
+/**
+ * 팀 약칭 -> KBO 엠블럼 파일 코드.
+ * (KBO가 쓰는 코드는 구단의 과거 이름에서 온 경우가 많다:
+ *  HT=해태→KIA, WO=우리→키움, LT=롯데, OB=OB→두산, SK=SK→SSG, SS=삼성, HH=한화)
+ */
+const TEAM_LOGO_CODE = {
+  KIA: 'HT',
+  키움: 'WO',
+  롯데: 'LT',
+  두산: 'OB',
+  KT: 'KT',
+  SSG: 'SK',
+  삼성: 'SS',
+  NC: 'NC',
+  LG: 'LG',
+  한화: 'HH',
+};
+
 const KboTeams = {
   /** 팀 약칭으로 색상 정보를 찾는다. 모르는 팀이면 중립 색상 반환. */
   get(teamCode) {
     return KBO_TEAMS[teamCode] || { primary: '#2b2b3d', secondary: '#6ea8fe', name: teamCode || '' };
+  },
+
+  /** 팀 엠블럼 이미지 경로. 모르는 팀이면 null. */
+  logoPath(teamCode) {
+    const code = TEAM_LOGO_CODE[teamCode];
+    return code ? `assets/logos/${code}.png` : null;
   },
 
   /** 경기 결과에서 승리팀 약칭을 반환한다. 무승부·미개최면 null. */
