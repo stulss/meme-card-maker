@@ -18,7 +18,7 @@ class BaseballController {
       gameList: qs('#kbo-game-list'),
       message: qs('#kbo-message'),
       phraseStyle: qs('#kbo-phrase-style'),
-      useAi: qs('#kbo-use-ai'),
+      aiMode: qs('#kbo-ai-mode'),
       promptBox: qs('#kbo-prompt-box'),
       promptSummary: qs('#kbo-prompt-summary'),
       promptText: qs('#kbo-prompt-text'),
@@ -56,7 +56,10 @@ class BaseballController {
           this._showMessage('먼저 경기를 선택해 주세요.', true);
           return;
         }
-        if (this.el.useAi) this.el.useAi.checked = true;
+        // 프롬프트를 고쳐 다시 만드는 것이므로 AI가 꺼져 있으면 무료 AI로 켜준다
+        if (this.el.aiMode && this.el.aiMode.value === 'none') {
+          this.el.aiMode.value = 'free';
+        }
         this.applyGame(this.selectedIndex, { keepPrompt: true });
       });
     }
@@ -159,7 +162,9 @@ class BaseballController {
     const preset = CardRenderer.RATIO_PRESETS[cardState.ratio] || CardRenderer.RATIO_PRESETS['1:1'];
 
     const style = this.el.phraseStyle ? this.el.phraseStyle.value : 'none';
-    const wantsAi = this.el.useAi && this.el.useAi.checked;
+    // 기본값은 'none'(AI 사용 안 함). 사용자가 명시적으로 골라야 AI를 쓴다.
+    const aiMode = this.el.aiMode ? this.el.aiMode.value : 'none';
+    const wantsAi = aiMode !== 'none';
 
     // 경기 데이터로 AI 포스터 프롬프트를 자동 작성한다 (AI를 안 쓰더라도 화면에 보여준다).
     // keepPrompt면 사용자가 손댄 프롬프트를 덮어쓰지 않는다.
@@ -169,20 +174,18 @@ class BaseballController {
     let dataUrl = null;
     let aiNote = '';
 
-    if (wantsAi && AiImageClient.isKnownUnavailable()) {
-      aiNote = ' (AI 기능이 설정되지 않아 기본 스코어보드로 생성)';
-    } else if (wantsAi) {
+    if (wantsAi) {
       this._showMessage('AI가 포스터를 그리는 중입니다... (10초 이상 걸릴 수 있어요)', false);
       try {
         // 사용자가 프롬프트를 직접 고쳤다면 그 내용을 우선한다
         const promptToUse = (this.el.promptText && this.el.promptText.value.trim()) || built.prompt;
-        dataUrl = await AiImageClient.generate(promptToUse, cardState.ratio, 'poster');
+        dataUrl = await AiImageClient.generate(promptToUse, cardState.ratio, 'poster', aiMode);
       } catch (err) {
         aiNote =
-          err.code === 'NO_API_KEY' ? ' (AI 기능이 설정되지 않아 기본 스코어보드로 생성)'
-            : err.code === 'RATE_LIMITED' ? ' (AI 생성 한도 초과로 기본 스코어보드로 생성)'
-              : err.code === 'CONTENT_POLICY' ? ' (AI가 이 내용을 거부해 기본 스코어보드로 생성)'
-                : ' (AI 생성에 실패해 기본 스코어보드로 생성)';
+          err.code === 'NO_API_KEY' ? ' (OpenAI 키가 없어 스코어보드로 생성 — 무료 AI를 선택해 보세요)'
+            : err.code === 'RATE_LIMITED' ? ' (AI 생성 한도 초과로 스코어보드로 생성)'
+              : err.code === 'CONTENT_POLICY' ? ' (AI가 이 내용을 거부해 스코어보드로 생성)'
+                : ` (AI 생성 실패로 스코어보드로 생성: ${err.message})`;
       }
     }
 

@@ -148,15 +148,17 @@ class EditorController {
     el.aiImageBtn.disabled = true;
     this._showAiHint('AI가 이미지를 만드는 중입니다... (몇 초 걸릴 수 있어요)', false);
 
+    const provider = el.aiProviderSelect ? el.aiProviderSelect.value : 'auto';
+
     try {
-      const dataUrl = await AiImageClient.generate(prompt, this.cardState.ratio);
+      const dataUrl = await AiImageClient.generate(prompt, this.cardState.ratio, 'background', provider);
       this.cardState.imageDataUrl = dataUrl;
       this.imageElCache = await loadImageFromDataUrl(dataUrl);
       this.scheduleRender();
       this._showAiHint('AI 배경을 적용했습니다. 마음에 안 들면 다시 눌러보세요.', false);
     } catch (err) {
       if (err.code === 'NO_API_KEY') {
-        this._showAiHint('AI 이미지 기능이 아직 설정되지 않았습니다. 🎨 버튼으로 기본 배경을 만들 수 있어요.', true);
+        this._showAiHint('OpenAI 키가 없습니다. 옆의 선택을 "무료 AI"로 바꿔보세요.', true);
       } else if (err.code === 'RATE_LIMITED') {
         this._showAiHint('오늘 AI 생성 한도를 모두 사용했습니다. 🎨 버튼을 이용해 주세요.', true);
       } else if (err.code === 'CONTENT_POLICY') {

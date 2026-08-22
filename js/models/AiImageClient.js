@@ -7,22 +7,25 @@
  * 없어도 앱은 완전히 동작한다.
  */
 const AiImageClient = {
-  /** 서버에 AI 기능이 설정돼 있는지 (한 번 확인하면 세션 동안 기억) */
-  _available: null,
-
   /**
    * @param {string} prompt 프롬프트
    * @param {string} aspect '1:1' | '4:5' | '9:16'
    * @param {'background'|'poster'} [mode] 'background'는 글자 없는 배경용(기본),
    *   'poster'는 스코어보드까지 포함된 완성 포스터용
+   * @param {'auto'|'openai'|'free'} [provider] 사용할 AI 제공자
    * @returns {Promise<string>} 이미지 dataURL
    * @throws {Error} code 속성에 NO_API_KEY / RATE_LIMITED 등이 담긴다
    */
-  async generate(prompt, aspect, mode) {
+  async generate(prompt, aspect, mode, provider) {
     const res = await fetch('/api/generate-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, aspect, mode: mode || 'background' }),
+      body: JSON.stringify({
+        prompt,
+        aspect,
+        mode: mode || 'background',
+        provider: provider || 'auto',
+      }),
     });
 
     let payload = {};
@@ -33,13 +36,12 @@ const AiImageClient = {
     }
 
     if (!res.ok) {
-      if (payload.code === 'NO_API_KEY') this._available = false;
+      // NO_API_KEY는 "OpenAI를 명시적으로 골랐는데 키가 없다"는 뜻일 뿐,
+      // 무료 경로는 여전히 쓸 수 있으므로 AI 기능 전체를 막지 않는다.
       const err = new Error(payload.error || `AI 이미지 생성 실패 (${res.status})`);
       err.code = payload.code || 'HTTP_' + res.status;
       throw err;
     }
-
-    this._available = true;
     if (!payload.dataUrl) {
       const err = new Error('AI 응답에 이미지가 없습니다.');
       err.code = 'NO_IMAGE';
@@ -51,7 +53,4 @@ const AiImageClient = {
     return payload.dataUrl;
   },
 
-  isKnownUnavailable() {
-    return this._available === false;
-  },
 };

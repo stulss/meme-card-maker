@@ -191,6 +191,10 @@ module.exports = async function handler(req, res) {
   const rawPrompt = String((body && body.prompt) || '').trim();
   const aspect = String((body && body.aspect) || '1:1');
   const mode = String((body && body.mode) || 'background');
+  // 'auto'  : OpenAI 먼저, 실패하면 무료로 (기본)
+  // 'openai': OpenAI만 사용. 실패하면 무료로 몰래 넘어가지 않고 이유를 알린다
+  // 'free'  : 무료(Pollinations)만 사용
+  const provider = String((body && body.provider) || 'auto');
 
   if (!rawPrompt) {
     res.status(400).json({ error: '프롬프트를 입력해 주세요.' });
@@ -204,40 +208,58 @@ module.exports = async function handler(req, res) {
   const finalPrompt = buildPrompt(rawPrompt, mode);
   const notes = []; // 어떤 경로로 만들어졌는지 사용자에게 알려줄 메모
 
-  // 1순위: OpenAI (키가 있을 때만). 품질이 가장 좋고 이미지 속 글자도 잘 쓴다.
-  if (apiKey) {
-    try {
-      const result = await generateWithOpenAi(finalPrompt, aspect);
-      res.setHeader('Cache-Control', 'no-store');
-      res.status(200).json({ dataUrl: result, provider: 'openai' });
-      return;
-    } catch (err) {
-      // 콘텐츠 정책 위반은 대체 시도를 해도 같은 결과일 가능성이 높으므로 바로 알린다.
-      if (err.code === 'CONTENT_POLICY') {
-        res.status(400).json({
-          error: '요청하신 내용으로는 이미지를 만들 수 없습니다. 다른 표현으로 시도해 주세요.',
-          code: 'CONTENT_POLICY',
+  // OpenAI 경로 (provider가 'openai' 또는 'auto'일 때)
+  if (provider === 'openai' || provider === 'auto') {
+    if (!apiKey) {
+      if (provider === 'openai') {
+        // 사용자가 명시적으로 OpenAI를 고른 경우, 무료로 몰래 바꾸지 않고 알린다.
+        res.status(503).json({
+          error: 'OpenAI API 키가 설정되지 않았습니다. 무료 AI를 선택하거나 키를 등록해 주세요.',
+          code: 'NO_API_KEY',
         });
         return;
       }
-      console.error('[generate-image] OpenAI 실패, 무료 대체로 전환:', err.message);
-      notes.push(`OpenAI 사용 불가(${err.message})`);
+      notes.push('OpenAI 키 미설정');
+    } else {
+      try {
+        const result = await generateWithOpenAi(finalPrompt, aspect);
+        res.setHeader('Cache-Control', 'no-store');
+        res.status(200).json({ dataUrl: result, provider: 'openai' });
+        return;
+      } catch (err) {
+        // 콘텐츠 정책 위반은 어느 제공자로 바꿔도 같은 결과일 가능성이 높다.
+        if (err.code === 'CONTENT_POLICY') {
+          res.status(400).json({
+            error: '요청하신 내용으로는 이미지를 만들 수 없습니다. 다른 표현으로 시도해 주세요.',
+            code: 'CONTENT_POLICY',
+          });
+          return;
+        }
+        if (provider === 'openai') {
+          // 명시적으로 OpenAI를 골랐으므로 실패 사유를 그대로 알린다.
+          res.status(502).json({
+            error: `OpenAI 이미지 생성에 실패했습니다. ${err.message}`,
+            code: 'AI_ERROR',
+          });
+          return;
+        }
+        console.error('[generate-image] OpenAI 실패, 무료 대체로 전환:', err.message);
+        notes.push(`OpenAI 사용 불가(${err.message})`);
+      }
     }
-  } else {
-    notes.push('OpenAI 키 미설정');
   }
 
-  // 2순위: Pollinations (무료, 키 불필요). 키가 없거나 OpenAI가 실패해도 여기서 나온다.
+  // 무료 경로 (provider가 'free'이거나, 'auto'에서 OpenAI가 안 됐을 때)
   try {
     const dataUrl = await generateWithPollinations(finalPrompt, aspect);
     res.setHeader('Cache-Control', 'no-store');
     res.status(200).json({
       dataUrl,
       provider: 'pollinations',
-      note: `무료 AI(Pollinations)로 생성했습니다. ${notes.join(', ')}`.trim(),
+      note: notes.length ? `무료 AI로 생성했습니다. ${notes.join(', ')}` : '무료 AI로 생성했습니다.',
     });
   } catch (err) {
-    console.error('[generate-image] 무료 대체도 실패', err);
+    console.error('[generate-image] 무료 생성 실패', err);
     res.status(502).json({
       error: `AI 이미지 생성에 실패했습니다. ${notes.concat([err.message]).join(' / ')}`,
       code: 'AI_ERROR',

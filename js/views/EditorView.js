@@ -10,6 +10,7 @@ class EditorView {
       imageInput: qs('#image-input', root),
       autoImageBtn: qs('#auto-image-btn', root),
       aiPromptInput: qs('#ai-prompt-input', root),
+      aiProviderSelect: qs('#ai-provider-select', root),
       aiImageBtn: qs('#ai-image-btn', root),
       aiImageHint: qs('#ai-image-hint', root),
       fitMode: qs('#fit-mode', root),
