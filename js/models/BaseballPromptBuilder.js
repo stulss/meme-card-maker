@@ -18,6 +18,25 @@ const BaseballPromptBuilder = {
     return `${s.slice(0, 4)}.${s.slice(4, 6)}.${s.slice(6, 8)}`;
   },
 
+  /** 구장 한글명 -> 영문명 (AI가 구장 분위기를 더 정확히 잡도록) */
+  STADIUM_EN: {
+    잠실: 'Jamsil Baseball Stadium in Seoul',
+    고척: 'Gocheok Sky Dome, an indoor domed stadium in Seoul',
+    문학: 'Incheon SSG Landers Field',
+    수원: 'Suwon KT Wiz Park',
+    대구: 'Daegu Samsung Lions Park',
+    광주: 'Gwangju-KIA Champions Field',
+    사직: 'Sajik Baseball Stadium in Busan',
+    창원: 'Changwon NC Park',
+    대전: 'Daejeon Hanwha Life Eagles Park',
+    울산: 'Ulsan Munsu Baseball Stadium',
+    청주: 'Cheongju Baseball Stadium',
+  },
+
+  _stadiumEn(ko) {
+    return this.STADIUM_EN[ko] || `${ko} baseball stadium in South Korea`;
+  },
+
   /** 점수 차로 경기 성격을 분류한다 */
   _classify(game) {
     if (!game.played) return 'cancelled';
@@ -79,7 +98,10 @@ const BaseballPromptBuilder = {
     const lines = [];
 
     lines.push(`A premium, high-quality KBO Korean baseball sports poster illustration, ${ratioText}.`);
-    lines.push(`Subject: the result of a Korean professional baseball game played on ${date} at ${stadium} stadium, ${timeOfDay}.`);
+    lines.push(
+      `Subject: the result of a KBO Korean professional baseball game between the ${away.name} and the ${home.name}, ` +
+      `played on ${date} at ${this._stadiumEn(stadium)}, ${timeOfDay}.`
+    );
     lines.push(`Overall feeling: ${this._moodEn(kind)}.`);
 
     // 좌우 캐릭터 배치
@@ -109,7 +131,7 @@ const BaseballPromptBuilder = {
 
     // 배경
     lines.push(
-      `BACKGROUND: a large Korean baseball stadium, ${timeOfDay}, ` +
+      `BACKGROUND: ${this._stadiumEn(stadium)}, ${timeOfDay}, ` +
       (game.played
         ? 'packed with a roaring crowd, dynamic sports illustration style blended with cinematic photography, motion blur, flying baseball with a glowing trajectory arc across the frame.'
         : 'nearly empty with covered infield, overcast or rainy sky, quiet and still.')
