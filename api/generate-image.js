@@ -22,7 +22,9 @@ const ENDPOINT = 'https://api.openai.com/v1/images/generations';
 const MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
 const QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'low';
 
-const MAX_PROMPT_LENGTH = 400;
+// 야구 포스터용 자동 생성 프롬프트는 2000자를 넘기도 하므로 넉넉히 잡는다.
+// (일반 카드에서 사용자가 직접 쓰는 프롬프트는 보통 100자 이내)
+const MAX_PROMPT_LENGTH = 4000;
 
 // 간이 rate limit (인스턴스 메모리 기준)
 const RATE_LIMIT_MAX = Number(process.env.AI_IMAGE_DAILY_LIMIT || 100);
@@ -51,8 +53,18 @@ function mapSize(aspect) {
   return '1024x1024';
 }
 
-/** 카드 배경으로 쓰기 좋도록 프롬프트를 보정한다 */
-function buildPrompt(userPrompt, aspect) {
+/**
+ * 프롬프트를 모드에 맞게 보정한다.
+ *
+ * - 'background': 카드 배경으로만 쓸 이미지. 나중에 텍스트를 얹을 것이므로
+ *   글자가 들어가지 않도록 명시한다.
+ * - 'poster': 완성된 포스터. 프롬프트에 이미 스코어보드 문구·구도·네거티브가
+ *   모두 들어있으므로 그대로 전달한다. (여기서 "글자 넣지 마"를 붙이면
+ *   스코어보드를 그리라는 지시와 충돌한다.)
+ */
+function buildPrompt(userPrompt, mode) {
+  if (mode === 'poster') return userPrompt;
+
   return [
     userPrompt,
     'Background image for a social media card.',
@@ -97,6 +109,7 @@ module.exports = async function handler(req, res) {
 
   const rawPrompt = String((body && body.prompt) || '').trim();
   const aspect = String((body && body.aspect) || '1:1');
+  const mode = String((body && body.mode) || 'background');
 
   if (!rawPrompt) {
     res.status(400).json({ error: '프롬프트를 입력해 주세요.' });
@@ -116,7 +129,7 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        prompt: buildPrompt(rawPrompt, aspect),
+        prompt: buildPrompt(rawPrompt, mode),
         size: mapSize(aspect),
         quality: QUALITY,
         n: 1,

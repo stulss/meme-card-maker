@@ -338,6 +338,41 @@ button.danger {
   cursor: pointer;
 }
 
+/* AI 프롬프트 표시/편집 */
+.prompt-box {
+  margin-top: 0.6rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  background: #10131b;
+}
+.prompt-box summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.prompt-summary {
+  margin: 0.6rem 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  font-weight: 600;
+}
+.prompt-box textarea {
+  width: 100%;
+  background: #0b0e15;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  padding: 0.5rem;
+  resize: vertical;
+}
+.prompt-box button {
+  margin-top: 0.5rem;
+}
+
 /* 야구 모드 경기 목록 */
 #kbo-game-list {
   list-style: none;

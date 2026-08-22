@@ -19,6 +19,10 @@ class BaseballController {
       message: qs('#kbo-message'),
       phraseStyle: qs('#kbo-phrase-style'),
       useAi: qs('#kbo-use-ai'),
+      promptBox: qs('#kbo-prompt-box'),
+      promptSummary: qs('#kbo-prompt-summary'),
+      promptText: qs('#kbo-prompt-text'),
+      promptRegenBtn: qs('#kbo-prompt-regen-btn'),
     };
 
     if (!this.el.dateInput) return; // 패널이 없으면 아무것도 하지 않음
@@ -45,6 +49,17 @@ class BaseballController {
         if (this.selectedIndex >= 0) this.applyGame(this.selectedIndex);
       });
     }
+    if (this.el.promptRegenBtn) {
+      // 프롬프트를 직접 고친 뒤 다시 생성 (AI 옵션을 자동으로 켠다)
+      this.el.promptRegenBtn.addEventListener('click', () => {
+        if (this.selectedIndex < 0) {
+          this._showMessage('먼저 경기를 선택해 주세요.', true);
+          return;
+        }
+        if (this.el.useAi) this.el.useAi.checked = true;
+        this.applyGame(this.selectedIndex, { keepPrompt: true });
+      });
+    }
   }
 
   _showMessage(text, isError) {
@@ -52,6 +67,14 @@ class BaseballController {
     this.el.message.textContent = text;
     this.el.message.classList.toggle('error', !!isError);
     this.el.message.hidden = !text;
+  }
+
+  /** 자동 작성된 프롬프트를 화면에 보여준다 (사용자가 직접 고칠 수도 있다) */
+  _showPrompt(summary, prompt) {
+    if (!this.el.promptBox) return;
+    this.el.promptBox.hidden = false;
+    if (this.el.promptSummary) this.el.promptSummary.textContent = summary;
+    if (this.el.promptText) this.el.promptText.value = prompt;
   }
 
   async loadGames() {
@@ -125,54 +148,48 @@ class BaseballController {
     });
   }
 
-  /**
-   * AI 배경용 프롬프트를 만든다. 팀명·점수 같은 사실 정보는 넣지 않는다 —
-   * AI가 글자를 그려 넣으면 실제 결과와 어긋날 수 있기 때문이다.
-   * AI에게는 "분위기"만 맡기고, 사실은 스코어보드가 정확히 담당한다.
-   */
-  _buildBackgroundPrompt(game) {
-    const night = /^(1[89]|2[0-3]):/.test(game.time || '') ? 'under night stadium floodlights' : 'in warm afternoon daylight';
-    if (!game.played) {
-      return `An empty baseball stadium ${night}, quiet and moody atmosphere, rain-soaked or overcast sky, cinematic wide shot.`;
-    }
-    return `A dramatic baseball stadium ${night}, packed crowd in the stands, cinematic wide shot, vibrant sports photography atmosphere.`;
-  }
-
-  /** 선택한 경기로 배경 이미지 + 문구를 자동 생성해 편집기에 반영한다. */
-  async applyGame(index) {
+  /** 선택한 경기로 이미지 + 문구를 자동 생성해 편집기에 반영한다. */
+  async applyGame(index, options) {
     const game = this.games[index];
     if (!game) return;
     this.selectedIndex = index;
+    const keepPrompt = !!(options && options.keepPrompt);
 
     const cardState = this.editorController.cardState;
     const preset = CardRenderer.RATIO_PRESETS[cardState.ratio] || CardRenderer.RATIO_PRESETS['1:1'];
 
     const style = this.el.phraseStyle ? this.el.phraseStyle.value : 'none';
-
-    // AI 배경 옵션이 켜져 있으면 야구장 분위기 배경을 먼저 생성한다.
-    // 실패하면 조용히 기본(팀 색상 분할) 배경으로 대체한다 — AI는 선택 사항이다.
-    let bgImage = null;
-    let aiNote = ''; // AI를 시도했다가 실패한 경우 최종 메시지에 함께 알린다
     const wantsAi = this.el.useAi && this.el.useAi.checked;
 
+    // 경기 데이터로 AI 포스터 프롬프트를 자동 작성한다 (AI를 안 쓰더라도 화면에 보여준다).
+    // keepPrompt면 사용자가 손댄 프롬프트를 덮어쓰지 않는다.
+    const built = BaseballPromptBuilder.buildWithSummary(game, cardState.ratio);
+    if (!keepPrompt) this._showPrompt(built.summary, built.prompt);
+
+    let dataUrl = null;
+    let aiNote = '';
+
     if (wantsAi && AiImageClient.isKnownUnavailable()) {
-      aiNote = ' (AI 기능이 설정되지 않아 기본 배경 사용)';
+      aiNote = ' (AI 기능이 설정되지 않아 기본 스코어보드로 생성)';
     } else if (wantsAi) {
-      this._showMessage('AI 배경을 생성하는 중입니다... (몇 초 걸릴 수 있어요)', false);
+      this._showMessage('AI가 포스터를 그리는 중입니다... (10초 이상 걸릴 수 있어요)', false);
       try {
-        const prompt = this._buildBackgroundPrompt(game);
-        const aiUrl = await AiImageClient.generate(prompt, cardState.ratio);
-        bgImage = await loadImageFromDataUrl(aiUrl);
+        // 사용자가 프롬프트를 직접 고쳤다면 그 내용을 우선한다
+        const promptToUse = (this.el.promptText && this.el.promptText.value.trim()) || built.prompt;
+        dataUrl = await AiImageClient.generate(promptToUse, cardState.ratio, 'poster');
       } catch (err) {
         aiNote =
-          err.code === 'NO_API_KEY' ? ' (AI 기능이 설정되지 않아 기본 배경 사용)'
-            : err.code === 'RATE_LIMITED' ? ' (AI 생성 한도 초과로 기본 배경 사용)'
-              : ' (AI 생성에 실패해 기본 배경 사용)';
+          err.code === 'NO_API_KEY' ? ' (AI 기능이 설정되지 않아 기본 스코어보드로 생성)'
+            : err.code === 'RATE_LIMITED' ? ' (AI 생성 한도 초과로 기본 스코어보드로 생성)'
+              : err.code === 'CONTENT_POLICY' ? ' (AI가 이 내용을 거부해 기본 스코어보드로 생성)'
+                : ' (AI 생성에 실패해 기본 스코어보드로 생성)';
       }
     }
 
-    // 경기 결과 자체를 스코어보드 그래픽으로 그린 이미지 (팀명·점수·날짜·승패 포함)
-    const dataUrl = await BaseballCardGenerator.generateScoreboard(game, preset.w, preset.h, bgImage);
+    // AI를 안 썼거나 실패했으면 정확한 스코어보드 그래픽으로 만든다
+    if (!dataUrl) {
+      dataUrl = await BaseballCardGenerator.generateScoreboard(game, preset.w, preset.h, null);
+    }
 
     cardState.imageDataUrl = dataUrl;
     cardState.imageFitMode = 'cover';

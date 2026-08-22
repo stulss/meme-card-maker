@@ -11,16 +11,18 @@ const AiImageClient = {
   _available: null,
 
   /**
-   * @param {string} prompt 사용자가 입력한 분위기 설명
+   * @param {string} prompt 프롬프트
    * @param {string} aspect '1:1' | '4:5' | '9:16'
+   * @param {'background'|'poster'} [mode] 'background'는 글자 없는 배경용(기본),
+   *   'poster'는 스코어보드까지 포함된 완성 포스터용
    * @returns {Promise<string>} 이미지 dataURL
    * @throws {Error} code 속성에 NO_API_KEY / RATE_LIMITED 등이 담긴다
    */
-  async generate(prompt, aspect) {
+  async generate(prompt, aspect, mode) {
     const res = await fetch('/api/generate-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, aspect }),
+      body: JSON.stringify({ prompt, aspect, mode: mode || 'background' }),
     });
 
     let payload = {};
