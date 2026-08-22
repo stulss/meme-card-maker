@@ -152,18 +152,22 @@ class BaseballController {
     // AI 배경 옵션이 켜져 있으면 야구장 분위기 배경을 먼저 생성한다.
     // 실패하면 조용히 기본(팀 색상 분할) 배경으로 대체한다 — AI는 선택 사항이다.
     let bgImage = null;
-    if (this.el.useAi && this.el.useAi.checked && !AiImageClient.isKnownUnavailable()) {
+    let aiNote = ''; // AI를 시도했다가 실패한 경우 최종 메시지에 함께 알린다
+    const wantsAi = this.el.useAi && this.el.useAi.checked;
+
+    if (wantsAi && AiImageClient.isKnownUnavailable()) {
+      aiNote = ' (AI 기능이 설정되지 않아 기본 배경 사용)';
+    } else if (wantsAi) {
       this._showMessage('AI 배경을 생성하는 중입니다... (몇 초 걸릴 수 있어요)', false);
       try {
         const prompt = this._buildBackgroundPrompt(game);
         const aiUrl = await AiImageClient.generate(prompt, cardState.ratio);
         bgImage = await loadImageFromDataUrl(aiUrl);
       } catch (err) {
-        const reason =
-          err.code === 'NO_API_KEY' ? 'AI 기능이 아직 설정되지 않아'
-            : err.code === 'RATE_LIMITED' ? '오늘 AI 생성 한도를 넘어'
-              : 'AI 생성에 실패해';
-        this._showMessage(`${reason} 기본 배경으로 만들었습니다.`, false);
+        aiNote =
+          err.code === 'NO_API_KEY' ? ' (AI 기능이 설정되지 않아 기본 배경 사용)'
+            : err.code === 'RATE_LIMITED' ? ' (AI 생성 한도 초과로 기본 배경 사용)'
+              : ' (AI 생성에 실패해 기본 배경 사용)';
       }
     }
 
@@ -190,6 +194,6 @@ class BaseballController {
     this.editorController.scheduleRender();
 
     this._renderGameList();
-    this._showMessage('카드를 만들었습니다. 아래 편집 패널에서 자유롭게 수정할 수 있습니다.', false);
+    this._showMessage(`카드를 만들었습니다. 아래 편집 패널에서 자유롭게 수정할 수 있습니다.${aiNote}`, false);
   }
 }
