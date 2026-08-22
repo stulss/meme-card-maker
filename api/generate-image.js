@@ -140,12 +140,24 @@ module.exports = async function handler(req, res) {
       const detail = await aiRes.text().catch(() => '');
       console.error('[generate-image] AI 응답 오류', aiRes.status, detail.slice(0, 500));
 
+      // OpenAI가 준 사람이 읽을 수 있는 사유를 추출한다.
+      // (오류 메시지에는 API 키가 포함되지 않으므로 노출해도 안전하며,
+      //  "조직 인증 필요"·"크레딧 부족"처럼 사용자가 직접 조치해야 하는 경우가 많아
+      //  그대로 알려주는 편이 문제 해결에 훨씬 도움이 된다.)
+      let reason = '';
+      try {
+        const parsed = JSON.parse(detail);
+        reason = (parsed && parsed.error && parsed.error.message) || '';
+      } catch (e) {
+        reason = detail.slice(0, 200);
+      }
+
       // 콘텐츠 정책 위반은 사용자가 프롬프트를 고치면 되므로 구분해서 알린다.
       const isPolicy = aiRes.status === 400 && /safety|policy|moderation/i.test(detail);
       res.status(isPolicy ? 400 : 502).json({
         error: isPolicy
           ? '요청하신 내용으로는 이미지를 만들 수 없습니다. 다른 표현으로 시도해 주세요.'
-          : 'AI 이미지 생성에 실패했습니다.',
+          : `AI 이미지 생성에 실패했습니다. (${aiRes.status}) ${reason}`.trim(),
         code: isPolicy ? 'CONTENT_POLICY' : 'AI_ERROR',
       });
       return;
