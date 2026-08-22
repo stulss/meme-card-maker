@@ -11,6 +11,18 @@
 https://meme-card-maker.vercel.app
 ```
 
+## 화면 구성
+
+상단 탭으로 두 가지 모드를 오간다. **기본은 「일반 카드」** 다.
+
+| 탭 | 이미지를 어디서 가져오나 |
+|---|---|
+| **일반 카드** (기본) | 직접 업로드 · 절차적 자동 생성 · AI 생성 |
+| **⚾ 야구 카드** | 날짜를 골라 그날 KBO 경기 결과로 자동 생성 |
+
+탭은 **이미지 소스만** 바꾼다. 문구 편집·미리보기·템플릿·가져오기/내보내기 패널은
+두 모드에서 똑같이 쓰이므로 항상 보인다.
+
 ## 핵심 기능
 
 - **⚾ 야구 모드**: 날짜를 고르면 그날의 KBO 경기 결과를 자동으로 불러오고, 경기를 선택하면 **경기 결과가 스코어보드 그래픽으로 그려진 카드**가 자동 생성됨 (팀 색상 분할, 패배팀 흐리게, WIN 배지, 날짜·구장·결과 포함). 원하면 코멘트 문구를 덧붙일 수 있음
@@ -46,7 +58,7 @@ meme-card-maker/
 │  ├─ models/                상태·저장소 (CardStateModel, TemplateStore 등)
 │  ├─ render/                 렌더링 핵심 (CardRenderer, TextLayout, ImageFit)
 │  ├─ views/                   DOM 바인딩
-│  ├─ controllers/             이벤트 연결
+│  ├─ controllers/             이벤트 연결 (TabController가 탭 전환 담당)
 │  └─ main.js                  진입점
 ├─ tools/
 │  ├─ generate-fixtures.html   fixture 이미지 생성 도구(개발용)
