@@ -45,6 +45,9 @@ const AiImageClient = {
       err.code = 'NO_IMAGE';
       throw err;
     }
+    // 어떤 제공자로 만들었는지 기억해 두면 UI에서 안내할 수 있다
+    this.lastProvider = payload.provider || 'unknown';
+    this.lastNote = payload.note || '';
     return payload.dataUrl;
   },
 

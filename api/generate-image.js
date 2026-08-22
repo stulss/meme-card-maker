@@ -73,6 +73,95 @@ function buildPrompt(userPrompt, mode) {
   ].join(' ');
 }
 
+/**
+ * OpenAI GPT Image로 생성한다. 실패하면 예외를 던져 호출한 쪽이 무료 대체로
+ * 넘어갈 수 있게 한다. 콘텐츠 정책 위반은 err.code = 'CONTENT_POLICY'로 구분한다.
+ */
+async function generateWithOpenAi(prompt, aspect) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  const aiRes = await fetch(ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      prompt,
+      size: mapSize(aspect),
+      quality: QUALITY,
+      n: 1,
+    }),
+  });
+
+  if (!aiRes.ok) {
+    const detail = await aiRes.text().catch(() => '');
+    // OpenAI가 준 사람이 읽을 수 있는 사유를 추출한다.
+    // (오류 메시지에는 API 키가 포함되지 않으므로 노출해도 안전하며,
+    //  "크레딧 부족"처럼 사용자가 직접 조치해야 하는 경우가 많아 그대로 알려준다.)
+    let reason = '';
+    try {
+      const parsed = JSON.parse(detail);
+      reason = (parsed && parsed.error && parsed.error.message) || '';
+    } catch (e) {
+      reason = detail.slice(0, 200);
+    }
+    const err = new Error(`${aiRes.status} ${reason}`.trim());
+    if (aiRes.status === 400 && /safety|policy|moderation/i.test(detail)) {
+      err.code = 'CONTENT_POLICY';
+    }
+    throw err;
+  }
+
+  const json = await aiRes.json();
+  const first = json.data && json.data[0];
+  if (!first) throw new Error('OpenAI가 이미지를 반환하지 않았습니다.');
+
+  // gpt-image 계열은 기본적으로 b64_json을 반환한다. url이 오는 경우도 대비한다.
+  if (first.b64_json) return `data:image/png;base64,${first.b64_json}`;
+  if (first.url) {
+    // URL로 온 경우 서버에서 받아 dataURL로 바꾼다.
+    // (브라우저가 외부 URL 이미지를 canvas에 그리면 tainted 문제가 생기므로)
+    const imgRes = await fetch(first.url);
+    if (!imgRes.ok) throw new Error(`이미지 다운로드 실패 (${imgRes.status})`);
+    const buf = Buffer.from(await imgRes.arrayBuffer());
+    const mime = imgRes.headers.get('content-type') || 'image/png';
+    return `data:${mime};base64,${buf.toString('base64')}`;
+  }
+  throw new Error('OpenAI 응답 형식을 해석하지 못했습니다.');
+}
+
+/**
+ * Pollinations.ai — 가입·API 키·결제 수단이 전혀 필요 없는 무료 이미지 생성.
+ * OpenAI 키가 없거나 실패했을 때의 대체 경로로 쓴다.
+ *
+ * 한계: SLA가 없고 rate limit이 예고 없이 바뀔 수 있으며, 이미지 안의 한글 글자를
+ * 제대로 못 쓴다. 그래도 "키 없이도 AI 이미지가 나온다"는 가치가 크다.
+ */
+async function generateWithPollinations(prompt, aspect) {
+  const size = mapSize(aspect).split('x');
+  const width = Number(size[0]) || 1024;
+  const height = Number(size[1]) || 1024;
+
+  const url =
+    `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
+    `?width=${width}&height=${height}&nologo=true&model=flux&seed=${Math.floor(Math.random() * 1e9)}`;
+
+  const imgRes = await fetch(url, {
+    headers: { 'User-Agent': 'meme-card-maker/1.0' },
+  });
+  if (!imgRes.ok) {
+    throw new Error(`Pollinations 응답 오류 (${imgRes.status})`);
+  }
+
+  const buf = Buffer.from(await imgRes.arrayBuffer());
+  if (buf.length < 1000) {
+    throw new Error('Pollinations가 유효한 이미지를 반환하지 않았습니다.');
+  }
+  const mime = imgRes.headers.get('content-type') || 'image/jpeg';
+  return `data:${mime};base64,${buf.toString('base64')}`;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'POST만 지원합니다.' });
@@ -80,14 +169,6 @@ module.exports = async function handler(req, res) {
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    // 키 미설정: 프런트엔드가 절차적 생성으로 대체할 수 있도록 명확히 알린다.
-    res.status(503).json({
-      error: 'AI 이미지 생성이 설정되지 않았습니다.',
-      code: 'NO_API_KEY',
-    });
-    return;
-  }
 
   if (!checkRateLimit()) {
     res.status(429).json({
@@ -120,85 +201,46 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  try {
-    const aiRes = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        prompt: buildPrompt(rawPrompt, mode),
-        size: mapSize(aspect),
-        quality: QUALITY,
-        n: 1,
-      }),
-    });
+  const finalPrompt = buildPrompt(rawPrompt, mode);
+  const notes = []; // 어떤 경로로 만들어졌는지 사용자에게 알려줄 메모
 
-    if (!aiRes.ok) {
-      const detail = await aiRes.text().catch(() => '');
-      console.error('[generate-image] AI 응답 오류', aiRes.status, detail.slice(0, 500));
-
-      // OpenAI가 준 사람이 읽을 수 있는 사유를 추출한다.
-      // (오류 메시지에는 API 키가 포함되지 않으므로 노출해도 안전하며,
-      //  "조직 인증 필요"·"크레딧 부족"처럼 사용자가 직접 조치해야 하는 경우가 많아
-      //  그대로 알려주는 편이 문제 해결에 훨씬 도움이 된다.)
-      let reason = '';
-      try {
-        const parsed = JSON.parse(detail);
-        reason = (parsed && parsed.error && parsed.error.message) || '';
-      } catch (e) {
-        reason = detail.slice(0, 200);
+  // 1순위: OpenAI (키가 있을 때만). 품질이 가장 좋고 이미지 속 글자도 잘 쓴다.
+  if (apiKey) {
+    try {
+      const result = await generateWithOpenAi(finalPrompt, aspect);
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(200).json({ dataUrl: result, provider: 'openai' });
+      return;
+    } catch (err) {
+      // 콘텐츠 정책 위반은 대체 시도를 해도 같은 결과일 가능성이 높으므로 바로 알린다.
+      if (err.code === 'CONTENT_POLICY') {
+        res.status(400).json({
+          error: '요청하신 내용으로는 이미지를 만들 수 없습니다. 다른 표현으로 시도해 주세요.',
+          code: 'CONTENT_POLICY',
+        });
+        return;
       }
-
-      // 콘텐츠 정책 위반은 사용자가 프롬프트를 고치면 되므로 구분해서 알린다.
-      const isPolicy = aiRes.status === 400 && /safety|policy|moderation/i.test(detail);
-      res.status(isPolicy ? 400 : 502).json({
-        error: isPolicy
-          ? '요청하신 내용으로는 이미지를 만들 수 없습니다. 다른 표현으로 시도해 주세요.'
-          : `AI 이미지 생성에 실패했습니다. (${aiRes.status}) ${reason}`.trim(),
-        code: isPolicy ? 'CONTENT_POLICY' : 'AI_ERROR',
-      });
-      return;
+      console.error('[generate-image] OpenAI 실패, 무료 대체로 전환:', err.message);
+      notes.push(`OpenAI 사용 불가(${err.message})`);
     }
+  } else {
+    notes.push('OpenAI 키 미설정');
+  }
 
-    const json = await aiRes.json();
-    const first = json.data && json.data[0];
-
-    if (!first) {
-      res.status(502).json({
-        error: 'AI가 이미지를 반환하지 않았습니다. 프롬프트를 바꿔 다시 시도해 주세요.',
-        code: 'NO_IMAGE',
-      });
-      return;
-    }
-
-    // gpt-image 계열은 기본적으로 b64_json을 반환한다. url이 오는 경우도 대비한다.
-    let dataUrl;
-    if (first.b64_json) {
-      dataUrl = `data:image/png;base64,${first.b64_json}`;
-    } else if (first.url) {
-      // URL로 온 경우 서버에서 받아 dataURL로 바꾼다.
-      // (브라우저가 외부 URL 이미지를 canvas에 그리면 tainted 문제가 생기므로)
-      const imgRes = await fetch(first.url);
-      if (!imgRes.ok) throw new Error(`이미지 다운로드 실패 (${imgRes.status})`);
-      const buf = Buffer.from(await imgRes.arrayBuffer());
-      const mime = imgRes.headers.get('content-type') || 'image/png';
-      dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
-    } else {
-      res.status(502).json({
-        error: 'AI 응답 형식을 해석하지 못했습니다.',
-        code: 'NO_IMAGE',
-      });
-      return;
-    }
-
-    // 생성 결과는 매번 달라야 하므로 캐시하지 않는다.
+  // 2순위: Pollinations (무료, 키 불필요). 키가 없거나 OpenAI가 실패해도 여기서 나온다.
+  try {
+    const dataUrl = await generateWithPollinations(finalPrompt, aspect);
     res.setHeader('Cache-Control', 'no-store');
-    res.status(200).json({ dataUrl });
+    res.status(200).json({
+      dataUrl,
+      provider: 'pollinations',
+      note: `무료 AI(Pollinations)로 생성했습니다. ${notes.join(', ')}`.trim(),
+    });
   } catch (err) {
-    console.error('[generate-image] 예외', err);
-    res.status(500).json({ error: 'AI 이미지 생성 중 오류가 발생했습니다.', code: 'EXCEPTION' });
+    console.error('[generate-image] 무료 대체도 실패', err);
+    res.status(502).json({
+      error: `AI 이미지 생성에 실패했습니다. ${notes.concat([err.message]).join(' / ')}`,
+      code: 'AI_ERROR',
+    });
   }
 };
