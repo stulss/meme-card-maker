@@ -12,7 +12,8 @@
 | 경로 | 이유 |
 |---|---|
 | `img/` | 검증 스크린샷·완성 샘플 이미지 다수. 필요해도 개별 파일 1~2장만 |
-| `assets/sample-images/`, `assets/fonts/` | 바이너리 에셋. 내용 확인은 필요할 때만 |
+| `assets/sample-images/`, `assets/fonts/`, `assets/logos/` | 바이너리 에셋. 내용 확인은 필요할 때만 |
+| `api/` | 서버리스 함수 2개(KBO 프록시, AI 이미지 프록시). 고칠 파일만 골라 연다 |
 | `tools/fixtures/import-invalid/` | 의도적으로 깨뜨린 테스트용 JSON. 내용은 이미 문서화됨 |
 | `js/` 전체 | 작업과 관련된 파일 1~2개만 골라 읽는다. 디렉토리 전체를 한 번에 읽지 않는다 |
 
