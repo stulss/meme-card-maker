@@ -159,6 +159,8 @@ class EditorController {
         this._showAiHint('AI 이미지 기능이 아직 설정되지 않았습니다. 🎨 버튼으로 기본 배경을 만들 수 있어요.', true);
       } else if (err.code === 'RATE_LIMITED') {
         this._showAiHint('오늘 AI 생성 한도를 모두 사용했습니다. 🎨 버튼을 이용해 주세요.', true);
+      } else if (err.code === 'CONTENT_POLICY') {
+        this._showAiHint(err.message, true);
       } else {
         this._showAiHint(`AI 생성에 실패했습니다: ${err.message}`, true);
       }
