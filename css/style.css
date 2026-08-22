@@ -59,6 +59,51 @@ button {
   font-size: 0.9rem;
 }
 
+/* 상단 탭 (일반 카드 / 야구 카드) */
+.tab-bar {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.75rem 1.5rem 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.tab-btn {
+  padding: 0.6rem 1.2rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-height: 44px;
+  position: relative;
+  bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  background: var(--panel-bg);
+  border-color: var(--panel-border);
+  color: var(--text);
+}
+
+/* 활성 탭이 아래 경계선과 이어져 보이도록 */
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--panel-bg);
+}
+
 .app-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -72,6 +117,11 @@ button {
   .app-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* grid 아이템은 display:grid 등이 hidden을 덮어쓸 수 있으므로 명시적으로 숨긴다 */
+[hidden] {
+  display: none !important;
 }
 
 .panel {

@@ -12,11 +12,16 @@
   <p>이미지와 문구를 조합해 밈·카드뉴스·SNS 게시용 이미지를 만들고 파일로 내려받습니다.</p>
 </header>
 
+<nav class="tab-bar" role="tablist" aria-label="카드 종류">
+  <button type="button" class="tab-btn active" data-tab="general" role="tab" aria-selected="true">일반 카드</button>
+  <button type="button" class="tab-btn" data-tab="baseball" role="tab" aria-selected="false">⚾ 야구 카드</button>
+</nav>
+
 <main class="app-grid">
 
   <!-- 야구 모드 패널 (KBO 경기 결과 → 카드 자동 생성) -->
-  <section class="panel" aria-labelledby="kbo-heading" style="grid-column:1 / -1;">
-    <h2 id="kbo-heading">⚾ 야구 모드 — 그날의 KBO 경기 결과로 카드 만들기</h2>
+  <section class="panel tab-panel" data-tab="baseball" aria-labelledby="kbo-heading" style="grid-column:1 / -1;" hidden>
+    <h2 id="kbo-heading">⚾ 그날의 KBO 경기 결과로 카드 만들기</h2>
     <div class="field-row">
       <div class="field">
         <label for="kbo-date-input">날짜</label>
@@ -59,11 +64,12 @@
   </section>
 
   <!-- 편집 패널 (카드 1) -->
-  <section class="panel" aria-labelledby="editor-heading">
-    <h2 id="editor-heading">편집</h2>
+  <!-- 일반 카드 탭 전용: 이미지 소스 -->
+  <section class="panel tab-panel" data-tab="general" aria-labelledby="source-heading" style="grid-column:1 / -1;">
+    <h2 id="source-heading">이미지 가져오기</h2>
 
     <div class="field">
-      <label for="image-input">이미지 불러오기 (PNG · JPEG)</label>
+      <label for="image-input">직접 불러오기 (PNG · JPEG)</label>
       <input type="file" id="image-input" accept="image/png,image/jpeg" />
       <button type="button" class="secondary-btn" id="auto-image-btn" style="margin-top:0.4rem;width:100%;">
         🎨 이미지 자동 생성 (직접 업로드 없이 배경 만들기)
@@ -78,6 +84,11 @@
       </div>
       <p class="ai-hint" id="ai-image-hint" hidden></p>
     </div>
+  </section>
+
+  <!-- 두 탭 공통: 문구·비율·색 편집 -->
+  <section class="panel" aria-labelledby="editor-heading">
+    <h2 id="editor-heading">편집</h2>
 
     <div class="field">
       <label for="fit-mode">이미지 맞춤 방식</label>
@@ -236,6 +247,7 @@
 <script src="js/controllers/TemplateController.js"></script>
 <script src="js/controllers/ImportExportController.js"></script>
 <script src="js/controllers/BaseballController.js"></script>
+<script src="js/controllers/TabController.js"></script>
 <script src="js/controllers/AppController.js"></script>
 
 <script src="js/main.js"></script>
