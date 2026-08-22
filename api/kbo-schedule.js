@@ -182,6 +182,8 @@ module.exports = async function handler(req, res) {
     res.setHeader('Cache-Control', `public, s-maxage=${maxAge}, stale-while-revalidate=86400`);
     res.status(200).json({ date, count: games.length, games });
   } catch (err) {
-    res.status(500).json({ error: 'KBO 데이터를 가져오지 못했습니다.', detail: String(err) });
+    // 상세 사유는 서버 로그로만 남긴다 (내부 구현 정보를 클라이언트에 노출하지 않음)
+    console.error('[kbo-schedule] 예외', err);
+    res.status(500).json({ error: 'KBO 데이터를 가져오지 못했습니다.' });
   }
 };

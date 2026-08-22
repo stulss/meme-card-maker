@@ -1,20 +1,18 @@
 /**
  * BaseballCardGenerator.js
- * KBO 경기 결과 하나로부터 (1) 배경 이미지와 (2) 카드 문구를 자동 생성한다.
+ * KBO 경기 결과 하나로부터 스코어보드 카드 이미지와 코멘트 문구를 만든다.
  *
- * 배경은 AutoImageGenerator와 같은 원리(절차적 canvas 그리기)지만, 무작위
- * 팔레트 대신 "승리팀 상징색"을 써서 경기 결과가 색으로 드러나게 한다.
- * 구단 로고·엠블럼 이미지는 저작권 때문에 쓰지 않고 색상만 활용한다.
+ * 팀명·점수·날짜·구장·승패를 이미지 안에 직접 그리므로, 이 이미지 하나로
+ * 카드가 완성된다. 좌우를 각 팀 상징색으로 나누고 패배팀 쪽을 어둡게 처리해
+ * 결과가 한눈에 보이게 하며, 구단 엠블럼은 워터마크로 깐다.
  */
 const BaseballCardGenerator = {
   /**
-   * 경기 결과 자체를 스코어보드 그래픽으로 그린 완성 이미지를 만든다.
-   * 배경색만 칠하는 generateBackground와 달리, 팀명·점수·날짜·구장·승패까지
-   * 이미지 안에 직접 렌더링하므로 이 이미지 하나로 카드가 완성된다.
-   *
-   * 좌우를 각 팀 상징색으로 나누고, 패배팀 쪽은 어둡게 처리해 결과가
-   * 한눈에 보이게 한다. 구단 로고·엠블럼은 저작권 때문에 쓰지 않는다.
-   *
+   * 경기 결과를 스코어보드 그래픽으로 그린 완성 이미지를 만든다.
+   * @param {object} game 경기 데이터
+   * @param {number} w 캔버스 너비
+   * @param {number} h 캔버스 높이
+   * @param {HTMLImageElement|null} [bgImage] AI가 만든 배경 (없으면 팀 색상만)
    * @returns {Promise<string>} PNG dataURL
    */
   async generateScoreboard(game, w, h, bgImage) {
@@ -245,64 +243,8 @@ const BaseballCardGenerator = {
   },
 
   /**
-   * (구버전) 경기 결과에 맞는 단순 배경 이미지를 생성한다.
-   * 지금은 generateScoreboard를 쓰지만, 배경만 필요할 때를 위해 남겨둔다.
-   * @returns {string} PNG dataURL
-   */
-  generateBackground(game, w, h) {
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-
-    const winner = KboTeams.winnerOf(game);
-    let topColor;
-    let bottomColor;
-
-    if (winner) {
-      const team = KboTeams.get(winner);
-      topColor = team.primary;
-      bottomColor = this._darken(team.primary, 0.55);
-    } else {
-      // 무승부 또는 미개최
-      topColor = '#3a3a48';
-      bottomColor = '#1b1b24';
-    }
-
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, topColor);
-    grad.addColorStop(1, bottomColor);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-
-    // 대각선 스트라이프 (야구 유니폼 느낌의 은은한 질감)
-    ctx.save();
-    ctx.globalAlpha = 0.07;
-    ctx.fillStyle = '#ffffff';
-    const stripeW = Math.max(12, w * 0.02);
-    for (let x = -h; x < w; x += stripeW * 3) {
-      ctx.beginPath();
-      ctx.moveTo(x, h);
-      ctx.lineTo(x + stripeW, h);
-      ctx.lineTo(x + stripeW + h, 0);
-      ctx.lineTo(x + h, 0);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
-
-    // 하단 어둡게 (문구 가독성 확보)
-    const shade = ctx.createLinearGradient(0, h * 0.45, 0, h);
-    shade.addColorStop(0, 'rgba(0,0,0,0)');
-    shade.addColorStop(1, 'rgba(0,0,0,0.5)');
-    ctx.fillStyle = shade;
-    ctx.fillRect(0, h * 0.45, w, h * 0.55);
-
-    return canvas.toDataURL('image/png');
-  },
-
-  /**
-   * 경기 결과로 카드 문구를 만든다.
+   * 경기 결과로 카드에 덧붙일 코멘트 문구를 만든다.
+   * (스코어보드 이미지에 이미 정보가 들어가므로 이건 선택 사항이다)
    * @param {object} game
    * @param {'score'|'headline'|'summary'} [style]
    * @returns {string}

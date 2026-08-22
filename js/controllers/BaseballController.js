@@ -158,6 +158,11 @@ class BaseballController {
     this.selectedIndex = index;
     const keepPrompt = !!(options && options.keepPrompt);
 
+    // 이 호출의 순번. AI 생성은 10초 이상 걸릴 수 있어 그 사이 다른 경기를
+    // 고를 수 있으므로, 반영 직전에 아직 최신 요청인지 확인한다.
+    this._requestSeq = (this._requestSeq || 0) + 1;
+    const mySeq = this._requestSeq;
+
     const cardState = this.editorController.cardState;
     const preset = CardRenderer.RATIO_PRESETS[cardState.ratio] || CardRenderer.RATIO_PRESETS['1:1'];
 
@@ -194,6 +199,10 @@ class BaseballController {
       dataUrl = await BaseballCardGenerator.generateScoreboard(game, preset.w, preset.h, null);
     }
 
+    // AI 응답을 기다리는 사이 사용자가 다른 경기를 골랐다면, 뒤늦게 도착한
+    // 이 결과로 화면을 덮어쓰지 않는다.
+    if (this._requestSeq !== mySeq) return;
+
     cardState.imageDataUrl = dataUrl;
     cardState.imageFitMode = 'cover';
 
@@ -209,7 +218,17 @@ class BaseballController {
     cardState.text.hRatio = 0.1;
     cardState.text.maxFontSizeRatio = 0.04;
 
-    this.editorController.imageElCache = await loadImageFromDataUrl(dataUrl);
+    // AI가 200과 함께 깨진 이미지를 줄 수 있다. 여기서 잡지 않으면 예외가
+    // 위로 던져져 "생성 중" 메시지가 영구히 고정된다.
+    try {
+      this.editorController.imageElCache = await loadImageFromDataUrl(dataUrl);
+    } catch (err) {
+      console.warn('[BaseballController] 생성된 이미지를 불러오지 못했습니다:', err);
+      const fallback = await BaseballCardGenerator.generateScoreboard(game, preset.w, preset.h, null);
+      cardState.imageDataUrl = fallback;
+      this.editorController.imageElCache = await loadImageFromDataUrl(fallback);
+      aiNote = ' (AI 이미지가 손상돼 스코어보드로 생성)';
+    }
     this.editorController.view.syncFormFromState(cardState);
     this.editorController.scheduleRender();
 

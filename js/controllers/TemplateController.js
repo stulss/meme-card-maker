@@ -64,9 +64,23 @@ class TemplateController {
       return;
     }
     const cardState = templateRecordToCardState(record);
-    await this.editorController.loadCardState(cardState);
+    let result;
+    try {
+      result = await this.editorController.loadCardState(cardState);
+    } catch (err) {
+      // 이미지 외의 이유로 실패한 경우 — 조용히 멈추지 않고 알린다
+      console.error('[TemplateController] 템플릿을 불러오지 못했습니다:', err);
+      this.view.showMessage('템플릿을 불러오지 못했습니다. 다시 시도해 주세요.', true);
+      return;
+    }
+
     this.activeTemplateId = id;
-    this.view.showMessage(`"${record.name}" 템플릿을 불러왔습니다.`, false);
+    this.view.showMessage(
+      result && result.imageFailed
+        ? `"${record.name}" 템플릿을 불러왔습니다. (이미지가 손상돼 문구·설정만 복원했습니다)`
+        : `"${record.name}" 템플릿을 불러왔습니다.`,
+      false
+    );
     this.refresh();
   }
 

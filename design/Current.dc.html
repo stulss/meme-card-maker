@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;800&display=swap">
+  <style>
+    body { margin:0; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; }
+    a { color:#6ea8fe; } a:hover { color:#8fbcff; }
+  </style>
+</helmet>
+
+<div style="width:1280px; height:860px; background:#0f1117; color:#e8eaf0; overflow:hidden; display:flex; flex-direction:column;">
+
+  <div style="padding:16px 24px; border-bottom:1px solid #2a2f3d;">
+    <div style="font-size:22px; font-weight:800;">이미지+문구 카드 메이커</div>
+    <div style="color:#9aa1b4; font-size:13px; margin-top:2px;">이미지와 문구를 조합해 밈·카드뉴스·SNS 게시용 이미지를 만들고 파일로 내려받습니다.</div>
+  </div>
+
+  <div style="display:flex; gap:6px; padding:12px 24px 0; border-bottom:1px solid #2a2f3d;">
+    <div style="padding:10px 18px; background:#171a23; border:1px solid #2a2f3d; border-bottom-color:#171a23; border-radius:8px 8px 0 0; font-weight:600; font-size:14px;">일반 카드</div>
+    <div style="padding:10px 18px; color:#9aa1b4; font-weight:600; font-size:14px;">⚾ 야구 카드</div>
+  </div>
+
+  <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px 24px; overflow:hidden;">
+
+    <div style="grid-column:1 / -1; background:#171a23; border:1px solid #2a2f3d; border-radius:10px; padding:16px;">
+      <div style="font-size:16px; font-weight:700; padding-bottom:8px; border-bottom:1px solid #2a2f3d; margin-bottom:12px;">이미지 가져오기</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="height:34px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px;"></div>
+        <div style="height:38px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#9aa1b4;">이미지 자동 생성</div>
+        <div style="display:flex; gap:8px;">
+          <div style="flex:2; height:34px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px;"></div>
+          <div style="flex:1; height:34px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px;"></div>
+          <div style="flex:1; height:34px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#171a23; border:1px solid #2a2f3d; border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+      <div style="font-size:16px; font-weight:700; padding-bottom:8px; border-bottom:1px solid #2a2f3d;">편집</div>
+      <div style="height:32px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px;"></div>
+      <div style="display:flex; gap:6px;">
+        <div style="flex:1; height:36px; background:#6ea8fe; border-radius:6px;"></div>
+        <div style="flex:1; height:36px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px;"></div>
+        <div style="flex:1; height:36px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px;"></div>
+      </div>
+      <div style="height:60px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px;"></div>
+      <div style="display:flex; gap:8px;">
+        <div style="flex:1; height:26px; background:#10131b; border-radius:4px;"></div>
+        <div style="flex:1; height:26px; background:#10131b; border-radius:4px;"></div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <div style="flex:1; height:26px; background:#10131b; border-radius:4px;"></div>
+        <div style="flex:1; height:26px; background:#10131b; border-radius:4px;"></div>
+      </div>
+      <div style="height:26px; background:#10131b; border-radius:4px;"></div>
+    </div>
+
+    <div style="background:#171a23; border:1px solid #2a2f3d; border-radius:10px; padding:16px; display:flex; flex-direction:column; align-items:center;">
+      <div style="font-size:16px; font-weight:700; padding-bottom:8px; border-bottom:1px solid #2a2f3d; width:100%; margin-bottom:12px;">미리보기</div>
+      <div style="width:190px; height:190px; background:linear-gradient(160deg,#3a1f14,#131230); border:1px solid #2a2f3d; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:26px;">6 : 9</div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <div style="padding:8px 14px; background:#6ea8fe; color:#0f1117; border-radius:6px; font-size:12px; font-weight:700;">PNG</div>
+        <div style="padding:8px 14px; background:#10131b; border:1px solid #2a2f3d; border-radius:6px; font-size:12px;">JPG</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="padding:0 24px 16px; display:flex; align-items:center; gap:8px; color:#9aa1b4; font-size:12px;">
+    <div style="flex:1; height:1px; background:#2a2f3d;"></div>
+    아래로 스크롤 — 템플릿 · 가져오기/내보내기
+    <div style="flex:1; height:1px; background:#2a2f3d;"></div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -212,14 +212,36 @@ class EditorController {
     }
   }
 
-  /** 템플릿 불러오기 등 외부에서 cardState 전체를 교체할 때 사용 */
+  /**
+   * 템플릿 불러오기 등 외부에서 cardState 전체를 교체할 때 사용.
+   *
+   * 이미지 로드 실패를 여기서 처리하는 이유: 저장된 템플릿의 imageDataUrl은
+   * "data:image/로 시작하는 문자열"까지만 검증되므로 base64가 깨져 있어도
+   * 저장은 통과한다. 그대로 두면 불러오기 전체가 예외로 중단되어 화면에
+   * 아무 반응이 없다. 이미지만 버리고 나머지 설정(문구·색·배치)은 복원한다.
+   *
+   * @returns {Promise<{imageFailed: boolean}>}
+   */
   async loadCardState(newState) {
     this.cardState = cloneCardState(newState);
-    this.imageElCache = this.cardState.imageDataUrl
-      ? await loadImageFromDataUrl(this.cardState.imageDataUrl)
-      : null;
+
+    let imageFailed = false;
+    if (this.cardState.imageDataUrl) {
+      try {
+        this.imageElCache = await loadImageFromDataUrl(this.cardState.imageDataUrl);
+      } catch (err) {
+        console.warn('[EditorController] 템플릿 이미지를 불러오지 못했습니다:', err);
+        this.cardState.imageDataUrl = null;
+        this.imageElCache = null;
+        imageFailed = true;
+      }
+    } else {
+      this.imageElCache = null;
+    }
+
     this.view.syncFormFromState(this.cardState);
     this.scheduleRender();
+    return { imageFailed };
   }
 
   scheduleRender() {

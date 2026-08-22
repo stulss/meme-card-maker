@@ -26,8 +26,53 @@ const QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'low';
 // (일반 카드에서 사용자가 직접 쓰는 프롬프트는 보통 100자 이내)
 const MAX_PROMPT_LENGTH = 4000;
 
-// 간이 rate limit (인스턴스 메모리 기준)
-const RATE_LIMIT_MAX = Number(process.env.AI_IMAGE_DAILY_LIMIT || 100);
+/**
+ * 이 엔드포인트는 인증이 없는 공개 경로이므로, OpenAI 키가 설정된 상태에서
+ * 남용되면 곧바로 요금이 발생한다. 방어는 세 겹으로 둔다.
+ *
+ * 1) 같은 출처에서 온 요청만 받는다 (아래 isSameOrigin).
+ *    브라우저는 fetch에 Origin/Referer를 붙이고, curl 스크립트는 보통 아무
+ *    헤더도 붙이지 않는다. 헤더는 위조할 수 있어 이것만으로 충분하진 않지만,
+ *    스크립트로 긁는 가장 흔한 남용은 막는다.
+ * 2) 인스턴스 단위 간이 카운터 (아래). 서버리스는 인스턴스가 여러 개 뜨고
+ *    콜드스타트마다 리셋되므로 정확한 상한이 아니라 완화 수단일 뿐이다.
+ * 3) **실질적인 마지막 방어선은 OpenAI 대시보드의 사용량 한도다.**
+ *    코드로는 여기까지가 한계이므로 반드시 함께 설정해야 한다.
+ *    https://platform.openai.com/settings/organization/limits
+ */
+const RATE_LIMIT_MAX = Number(process.env.AI_IMAGE_DAILY_LIMIT || 50);
+
+/**
+ * 요청이 이 앱 자신에게서 왔는지 확인한다.
+ * Origin/Referer가 아예 없는 요청(대부분의 스크립트)과 다른 사이트에서 온
+ * 요청을 거른다. ALLOWED_ORIGIN 환경변수로 추가 허용 출처를 지정할 수 있다.
+ */
+function isSameOrigin(req) {
+  const host = req.headers && req.headers.host;
+  if (!host) return false;
+
+  const raw = String((req.headers.origin || req.headers.referer || '')).trim();
+  if (!raw) return false; // 헤더 없는 요청은 거부
+
+  let originHost;
+  try {
+    originHost = new URL(raw).host;
+  } catch (e) {
+    return false;
+  }
+
+  if (originHost === host) return true;
+
+  const allowed = String(process.env.ALLOWED_ORIGIN || '').trim();
+  if (allowed) {
+    try {
+      return originHost === new URL(allowed).host;
+    } catch (e) {
+      return originHost === allowed;
+    }
+  }
+  return false;
+}
 const RATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 let rateWindowStart = Date.now();
 let rateCount = 0;
@@ -106,7 +151,22 @@ async function generateWithOpenAi(prompt, aspect) {
     } catch (e) {
       reason = detail.slice(0, 200);
     }
-    const err = new Error(`${aiRes.status} ${reason}`.trim());
+    // OpenAI 원문에는 계정·결제 상태 같은 운영 정보가 섞일 수 있으므로 그대로
+    // 노출하지 않는다. 사용자가 직접 조치해야 하는 대표 사유만 골라 알린다.
+    // (전체 원문은 아래 console.error로 서버 로그에만 남는다)
+    let publicReason;
+    if (/billing|quota|insufficient|credit/i.test(reason)) {
+      publicReason = 'OpenAI 크레딧이 부족하거나 사용 한도에 걸렸습니다.';
+    } else if (aiRes.status === 401 || aiRes.status === 403) {
+      publicReason = 'OpenAI API 키가 유효하지 않거나 이 모델에 접근할 수 없습니다.';
+    } else if (aiRes.status === 429) {
+      publicReason = 'OpenAI 요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.';
+    } else {
+      publicReason = `OpenAI 응답 오류 (${aiRes.status})`;
+    }
+    console.error('[generate-image] OpenAI 오류 원문:', aiRes.status, reason.slice(0, 300));
+
+    const err = new Error(publicReason);
     if (aiRes.status === 400 && /safety|policy|moderation/i.test(detail)) {
       err.code = 'CONTENT_POLICY';
     }
@@ -165,6 +225,15 @@ async function generateWithPollinations(prompt, aspect) {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'POST만 지원합니다.' });
+    return;
+  }
+
+  // 이 앱 화면에서 온 요청만 처리한다 (스크립트 남용 완화 — 위 주석 참고)
+  if (!isSameOrigin(req)) {
+    res.status(403).json({
+      error: '이 앱에서만 사용할 수 있습니다.',
+      code: 'FORBIDDEN_ORIGIN',
+    });
     return;
   }
 
