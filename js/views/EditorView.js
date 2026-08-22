@@ -9,6 +9,9 @@ class EditorView {
     this.el = {
       imageInput: qs('#image-input', root),
       autoImageBtn: qs('#auto-image-btn', root),
+      aiPromptInput: qs('#ai-prompt-input', root),
+      aiImageBtn: qs('#ai-image-btn', root),
+      aiImageHint: qs('#ai-image-hint', root),
       fitMode: qs('#fit-mode', root),
       ratioButtons: qsa('.ratio-btn', root),
       textContent: qs('#text-content', root),

@@ -17,7 +17,7 @@ const BaseballCardGenerator = {
    *
    * @returns {Promise<string>} PNG dataURL
    */
-  async generateScoreboard(game, w, h) {
+  async generateScoreboard(game, w, h, bgImage) {
     await CardRenderer.ensureFontsReady();
 
     const canvas = document.createElement('canvas');
@@ -32,17 +32,38 @@ const BaseballCardGenerator = {
     const awayWon = winner === game.awayTeam;
     const homeWon = winner === game.homeTeam;
 
-    // 1) 좌우 팀 색상 분할 (패배팀은 어둡게)
     const half = w / 2;
-    ctx.fillStyle = game.played && homeWon ? this._darken(awayTeam.primary, 0.55) : awayTeam.primary;
-    ctx.fillRect(0, 0, half, h);
-    ctx.fillStyle = game.played && awayWon ? this._darken(homeTeam.primary, 0.55) : homeTeam.primary;
-    ctx.fillRect(half, 0, w - half, h);
+    const awayFill = game.played && homeWon ? this._darken(awayTeam.primary, 0.55) : awayTeam.primary;
+    const homeFill = game.played && awayWon ? this._darken(homeTeam.primary, 0.55) : homeTeam.primary;
 
-    // 미개최 경기는 전체를 어둡게 (결과 없음을 시각적으로 표현)
-    if (!game.played) {
-      ctx.fillStyle = 'rgba(15,17,23,0.72)';
-      ctx.fillRect(0, 0, w, h);
+    // 1) 배경
+    if (bgImage) {
+      // AI가 만든 배경 사진 위에 팀 색을 반투명하게 얹는다.
+      // 분위기는 AI가, 결과(색·숫자)는 우리가 정확하게 담당하는 구조.
+      ImageFit.draw(ctx, bgImage, w, h, 'cover', '#12141c');
+      ctx.save();
+      ctx.globalAlpha = 0.62;
+      ctx.fillStyle = awayFill;
+      ctx.fillRect(0, 0, half, h);
+      ctx.fillStyle = homeFill;
+      ctx.fillRect(half, 0, w - half, h);
+      ctx.restore();
+      if (!game.played) {
+        ctx.fillStyle = 'rgba(15,17,23,0.62)';
+        ctx.fillRect(0, 0, w, h);
+      }
+    } else {
+      // 기본: 좌우 팀 색상 분할 (패배팀은 어둡게)
+      ctx.fillStyle = awayFill;
+      ctx.fillRect(0, 0, half, h);
+      ctx.fillStyle = homeFill;
+      ctx.fillRect(half, 0, w - half, h);
+
+      // 미개최 경기는 전체를 어둡게 (결과 없음을 시각적으로 표현)
+      if (!game.played) {
+        ctx.fillStyle = 'rgba(15,17,23,0.72)';
+        ctx.fillRect(0, 0, w, h);
+      }
     }
 
     // 2) 상하 그라디언트로 깊이감 + 텍스트 가독성 확보

@@ -117,6 +117,54 @@ class EditorController {
     if (el.autoPhraseBtn) {
       el.autoPhraseBtn.addEventListener('click', () => this._onAutoGeneratePhrase());
     }
+    if (el.aiImageBtn) {
+      el.aiImageBtn.addEventListener('click', () => this._onAiGenerateImage());
+      el.aiPromptInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') this._onAiGenerateImage();
+      });
+    }
+  }
+
+  _showAiHint(text, isError) {
+    const el = this.view.el.aiImageHint;
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('error', !!isError);
+    el.hidden = !text;
+  }
+
+  /**
+   * 생성형 AI로 배경 이미지를 만든다.
+   * 실패해도 앱은 그대로 동작하며, 사용자에게 이유를 알려준다.
+   */
+  async _onAiGenerateImage() {
+    const el = this.view.el;
+    const prompt = (el.aiPromptInput.value || '').trim();
+    if (!prompt) {
+      this._showAiHint('원하는 배경 분위기를 입력해 주세요. (예: 노을 지는 해변)', true);
+      return;
+    }
+
+    el.aiImageBtn.disabled = true;
+    this._showAiHint('AI가 이미지를 만드는 중입니다... (몇 초 걸릴 수 있어요)', false);
+
+    try {
+      const dataUrl = await AiImageClient.generate(prompt, this.cardState.ratio);
+      this.cardState.imageDataUrl = dataUrl;
+      this.imageElCache = await loadImageFromDataUrl(dataUrl);
+      this.scheduleRender();
+      this._showAiHint('AI 배경을 적용했습니다. 마음에 안 들면 다시 눌러보세요.', false);
+    } catch (err) {
+      if (err.code === 'NO_API_KEY') {
+        this._showAiHint('AI 이미지 기능이 아직 설정되지 않았습니다. 🎨 버튼으로 기본 배경을 만들 수 있어요.', true);
+      } else if (err.code === 'RATE_LIMITED') {
+        this._showAiHint('오늘 AI 생성 한도를 모두 사용했습니다. 🎨 버튼을 이용해 주세요.', true);
+      } else {
+        this._showAiHint(`AI 생성에 실패했습니다: ${err.message}`, true);
+      }
+    } finally {
+      el.aiImageBtn.disabled = false;
+    }
   }
 
   /**

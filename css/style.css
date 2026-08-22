@@ -312,6 +312,32 @@ button.danger {
   flex-wrap: wrap;
 }
 
+/* AI 이미지 생성 */
+.ai-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+.ai-hint.error {
+  color: var(--danger);
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.checkbox-field input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
 /* 야구 모드 경기 목록 */
 #kbo-game-list {
   list-style: none;

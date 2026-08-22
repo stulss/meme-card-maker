@@ -18,6 +18,7 @@ class BaseballController {
       gameList: qs('#kbo-game-list'),
       message: qs('#kbo-message'),
       phraseStyle: qs('#kbo-phrase-style'),
+      useAi: qs('#kbo-use-ai'),
     };
 
     if (!this.el.dateInput) return; // 패널이 없으면 아무것도 하지 않음
@@ -124,6 +125,19 @@ class BaseballController {
     });
   }
 
+  /**
+   * AI 배경용 프롬프트를 만든다. 팀명·점수 같은 사실 정보는 넣지 않는다 —
+   * AI가 글자를 그려 넣으면 실제 결과와 어긋날 수 있기 때문이다.
+   * AI에게는 "분위기"만 맡기고, 사실은 스코어보드가 정확히 담당한다.
+   */
+  _buildBackgroundPrompt(game) {
+    const night = /^(1[89]|2[0-3]):/.test(game.time || '') ? 'under night stadium floodlights' : 'in warm afternoon daylight';
+    if (!game.played) {
+      return `An empty baseball stadium ${night}, quiet and moody atmosphere, rain-soaked or overcast sky, cinematic wide shot.`;
+    }
+    return `A dramatic baseball stadium ${night}, packed crowd in the stands, cinematic wide shot, vibrant sports photography atmosphere.`;
+  },
+
   /** 선택한 경기로 배경 이미지 + 문구를 자동 생성해 편집기에 반영한다. */
   async applyGame(index) {
     const game = this.games[index];
@@ -135,8 +149,26 @@ class BaseballController {
 
     const style = this.el.phraseStyle ? this.el.phraseStyle.value : 'none';
 
+    // AI 배경 옵션이 켜져 있으면 야구장 분위기 배경을 먼저 생성한다.
+    // 실패하면 조용히 기본(팀 색상 분할) 배경으로 대체한다 — AI는 선택 사항이다.
+    let bgImage = null;
+    if (this.el.useAi && this.el.useAi.checked && !AiImageClient.isKnownUnavailable()) {
+      this._showMessage('AI 배경을 생성하는 중입니다... (몇 초 걸릴 수 있어요)', false);
+      try {
+        const prompt = this._buildBackgroundPrompt(game);
+        const aiUrl = await AiImageClient.generate(prompt, cardState.ratio);
+        bgImage = await loadImageFromDataUrl(aiUrl);
+      } catch (err) {
+        const reason =
+          err.code === 'NO_API_KEY' ? 'AI 기능이 아직 설정되지 않아'
+            : err.code === 'RATE_LIMITED' ? '오늘 AI 생성 한도를 넘어'
+              : 'AI 생성에 실패해';
+        this._showMessage(`${reason} 기본 배경으로 만들었습니다.`, false);
+      }
+    }
+
     // 경기 결과 자체를 스코어보드 그래픽으로 그린 이미지 (팀명·점수·날짜·승패 포함)
-    const dataUrl = await BaseballCardGenerator.generateScoreboard(game, preset.w, preset.h);
+    const dataUrl = await BaseballCardGenerator.generateScoreboard(game, preset.w, preset.h, bgImage);
 
     cardState.imageDataUrl = dataUrl;
     cardState.imageFitMode = 'cover';
